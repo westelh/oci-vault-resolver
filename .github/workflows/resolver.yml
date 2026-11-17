@@ -34,6 +34,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      # 形式に合わないタグ（v1.2.3-rc1 など）は公開できないので、test と verify-image を待たずに最初に失敗させる。
+      # タグはバイナリの version に埋め込まれるので、タグで動かした workflow_dispatch でも確かめる。
+      - name: Check the tag is vX.Y.Z
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::タグは vX.Y.Z の形式にしてください: $GITHUB_REF_NAME"
+            exit 1
+          fi
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
@@ -117,12 +126,6 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Check the tag is vX.Y.Z
-        run: |
-          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::タグは vX.Y.Z の形式にしてください: $GITHUB_REF_NAME"
-            exit 1
-          fi
       # push 権限があれば main 以外のコミットにも v* タグを打てるので、タグのコミットが main に入っていることを確かめる。
       # タグを作れる人を絞っても、どのコミットに打つかは縛れないため、ここで判定する。
       - uses: actions/checkout@v5
