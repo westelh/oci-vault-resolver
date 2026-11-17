@@ -132,10 +132,22 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install skopeo
+        run: command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
+      # 再実行やタグの打ち直しで公開済みのタグが別の digest に置き換わらないよう、タグがないことを確かめてから push する。
+      # 初回の公開ではパッケージ自体がないので、manifest unknown に加えて name unknown もタグがないものとして扱う。
+      - name: Refuse to overwrite a published tag
+        run: |
+          if out="$(skopeo inspect --raw "docker://$IMAGE:$GITHUB_REF_NAME" 2>&1)"; then
+            echo "::error::$IMAGE:$GITHUB_REF_NAME は公開済みです。直すときはパッチ版を上げてください"
+            exit 1
+          elif ! printf '%s' "$out" | grep -Eqi 'manifest unknown|name unknown'; then
+            echo "::error::タグの存在を確認できませんでした: $out"
+            exit 1
+          fi
       # 検証した archive と同じ digest で公開するため、docker daemon を経由せず skopeo で直接 push する。
       - name: Push the verified archive
         run: |
-          command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
           skopeo copy --all --preserve-digests oci-archive:image.tar "docker://$IMAGE:$GITHUB_REF_NAME"
       - name: Inspect the published image
         run: |
