@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "devDependencies": {
+    "skills": "1.7.6"
+  },
+  "skills": [
+    {
+      "source": "westelh/agent-rules",
+      "skills": ["agent-workflow"],
+      "ref": "v0.1.0"
+    }
+  ]
+}
