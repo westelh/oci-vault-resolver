@@ -1,6 +1,3 @@
-# CI は各プラットフォームを1回だけビルドし、そのイメージを起動確認してから公開用にアップロードする。
-RESOLVER_IMAGE := env("RESOLVER_IMAGE", "resolver:ci")
-RESOLVER_IMAGE_ARCHIVE := env("RESOLVER_IMAGE_ARCHIVE", "dist/resolver-image.tar")
 RESOLVER_PLATFORMS := env("RESOLVER_PLATFORMS", "amd64 arm64")
 RESOLVER_BINARY_DIR := env("RESOLVER_BINARY_DIR", "dist")
 RESOLVER_VERSION := env("RESOLVER_VERSION", "dev")
@@ -30,8 +27,6 @@ vet:
 test:
     go test ./...
 
-# CI で setup-go のモジュールとコンパイラのキャッシュを使えるよう、静的バイナリはホストでビルドする。
-# Docker のビルドはこのファイルを詰めるだけにする。
 [doc('RESOLVER_PLATFORMS 向けに静的バイナリをビルドする')]
 [script]
 build:
@@ -41,15 +36,4 @@ build:
       CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath \
         -ldflags="-s -w -buildid= -X main.version={{ RESOLVER_VERSION }}" \
         -o "{{ RESOLVER_BINARY_DIR }}/oci-vault-resolver-linux-$arch" .
-    done
-
-[doc('RESOLVER_IMAGE_ARCHIVE の各イメージを起動確認する')]
-[script]
-image-run:
-    for arch in {{ RESOLVER_PLATFORMS }}; do
-      image="{{ RESOLVER_IMAGE }}-$arch"
-      skopeo copy --override-os linux --override-arch "$arch" \
-        "oci-archive:{{ RESOLVER_IMAGE_ARCHIVE }}" "docker-daemon:$image"
-      docker run --rm --network none --read-only --cap-drop=ALL \
-        --security-opt=no-new-privileges --platform "linux/$arch" "$image" --version
     done
