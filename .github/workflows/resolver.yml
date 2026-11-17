@@ -107,8 +107,9 @@ jobs:
               exit 1
             fi
           done
+      # publish が使う archive なので、publish と同じ条件でだけ upload する。
       - uses: actions/upload-artifact@v4
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.repository == 'westelh/oci-vault-resolver' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
           name: image
           path: image.tar
