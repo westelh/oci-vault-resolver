@@ -27,6 +27,8 @@ env:
   # タグの push ではタグ名をバイナリの version に埋め込む。それ以外は dev。
   RESOLVER_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'dev' }}
 
+# verify-image から publish へは、イメージをレジストリではなく OCI archive の artifact で受け渡す。
+# 未検証のイメージをタグなしでもレジストリに置かず、起動確認した archive をそのまま公開するため。
 jobs:
   test:
     runs-on: ubuntu-24.04
@@ -81,6 +83,9 @@ jobs:
             --platform "$(printf 'linux/%s,' $PLATFORMS | sed 's/,$//')" \
             --output type=oci,dest=image.tar \
             .
+      # OCI archive を扱うのに skopeo を使う。buildx には archive を後から push する手段がなく、
+      # docker daemon の従来の image store はマルチプラットフォームの index を保持できず、
+      # push 時に digest が変わりうる。
       - name: Start the image on each architecture
         run: |
           command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
@@ -127,6 +132,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # 検証した archive と同じ digest で公開するため、docker daemon を経由せず skopeo で直接 push する。
       - name: Push the verified archive
         run: |
           command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
