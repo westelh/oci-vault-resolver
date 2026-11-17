@@ -136,7 +136,7 @@ jobs:
       - name: Push the verified archive
         run: |
           command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
-          skopeo copy --all oci-archive:image.tar "docker://$IMAGE:$GITHUB_REF_NAME"
+          skopeo copy --all --preserve-digests oci-archive:image.tar "docker://$IMAGE:$GITHUB_REF_NAME"
       - name: Inspect the published image
         run: |
           {
