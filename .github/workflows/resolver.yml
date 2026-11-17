@@ -1,0 +1,141 @@
+name: resolver
+
+on:
+  pull_request:
+    paths:
+      - "**.go"
+      - go.mod
+      - go.sum
+      - Dockerfile
+      - .github/workflows/resolver.yml
+  push:
+    tags:
+      - "v*"
+  # test と verify-image だけを動かす。公開は v* タグの push のみ。
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resolver-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/westelh/oci-vault-resolver
+  PLATFORMS: amd64 arm64
+  # タグの push ではタグ名をバイナリの version に埋め込む。それ以外は dev。
+  RESOLVER_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'dev' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      # gofmt -l は未整形のファイルがあっても成功するので、出力の有無で判定する。
+      - name: gofmt
+        run: |
+          unformatted="$("$(go env GOROOT)/bin/gofmt" -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt で整形されていないファイルがあります（gofmt -w で整形してください）"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+
+  verify-image:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          for arch in $PLATFORMS; do
+            echo "Building oci-vault-resolver for linux/$arch"
+            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath \
+              -ldflags="-s -w -buildid= -X main.version=$RESOLVER_VERSION" \
+              -o "dist/oci-vault-resolver-linux-$arch" .
+          done
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      # 検証したものをそのまま公開するため、マルチアーキテクチャの OCI アーカイブを一度だけ作る。
+      - name: Build multi-arch OCI archive
+        run: |
+          docker buildx build \
+            --platform "$(printf 'linux/%s,' $PLATFORMS | sed 's/,$//')" \
+            --output type=oci,dest=image.tar \
+            .
+      - name: Start the image on each architecture
+        run: |
+          command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
+          for arch in $PLATFORMS; do
+            skopeo copy --override-arch "$arch" oci-archive:image.tar "docker-daemon:oci-vault-resolver:verify-$arch"
+            out="$(docker run --rm --platform "linux/$arch" "oci-vault-resolver:verify-$arch" --version)"
+            echo "$out"
+            expected="oci-vault-resolver $RESOLVER_VERSION linux/$arch"
+            if [ "$out" != "$expected" ]; then
+              echo "::error::想定した出力は '$expected' です"
+              exit 1
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: image
+          path: image.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  # 公開は v* タグの push のみ。公開済みのタグは作り直さず、直すときはパッチ版を上げる。
+  publish:
+    needs: verify-image
+    if: github.repository == 'westelh/oci-vault-resolver' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check the tag is vX.Y.Z
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::タグは vX.Y.Z の形式にしてください: $GITHUB_REF_NAME"
+            exit 1
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push the verified archive
+        run: |
+          command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
+          skopeo copy --all oci-archive:image.tar "docker://$IMAGE:$GITHUB_REF_NAME"
+      - name: Inspect the published image
+        run: |
+          {
+            echo "### $IMAGE:$GITHUB_REF_NAME"
+            echo '```'
+            docker buildx imagetools inspect "$IMAGE:$GITHUB_REF_NAME"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
