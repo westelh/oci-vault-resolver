@@ -49,6 +49,7 @@ jobs:
         with:
           go-version-file: go.mod
       # gofmt -l は未整形のファイルがあっても成功するので、出力の有無で判定する。
+      # justfile の fmt-check に同じ判定を書いている。直すときは両方を揃える。
       - name: gofmt
         run: |
           unformatted="$("$(go env GOROOT)/bin/gofmt" -l .)"
@@ -73,6 +74,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      # justfile の build に同じビルドを書いている。ldflags などを直すときは両方を揃える。
       - name: Build binaries
         run: |
           mkdir -p dist
