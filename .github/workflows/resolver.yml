@@ -116,7 +116,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # 公開は v* タグの push のみ。公開済みのタグは作り直さず、直すときはパッチ版を上げる。
+  # 公開は v* タグの push のみ。公開済みのタグは作り直さない。
   publish:
     needs: verify-image
     if: github.repository == 'westelh/oci-vault-resolver' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -155,7 +155,7 @@ jobs:
       - name: Refuse to overwrite a published tag
         run: |
           if out="$(skopeo inspect --raw "docker://$IMAGE:$GITHUB_REF_NAME" 2>&1)"; then
-            echo "::error::$IMAGE:$GITHUB_REF_NAME は公開済みです。直すときはパッチ版を上げてください"
+            echo "::error::$IMAGE:$GITHUB_REF_NAME は公開済みです"
             exit 1
           elif ! printf '%s' "$out" | grep -Eqi 'manifest unknown|name unknown'; then
             echo "::error::タグの存在を確認できませんでした: $out"
