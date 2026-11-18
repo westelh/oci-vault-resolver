@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-workflow": {
+      "source": "westelh/agent-rules",
+      "ref": "v0.1.0",
+      "sourceType": "github",
+      "skillPath": "skills/agent-workflow/SKILL.md",
+      "computedHash": "787985a687559ad70cfc0c9c2d4b2ed8bfd2b35cff11fa042c0a1900470f4fd1",
+      "via": "."
+    }
+  }
+}

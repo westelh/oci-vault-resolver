@@ -37,3 +37,14 @@ build:
         -ldflags="-s -w -buildid= -X main.version={{ RESOLVER_VERSION }}" \
         -o "{{ RESOLVER_BINARY_DIR }}/oci-vault-resolver-linux-$arch" .
     done
+
+# package.json の skills に宣言した他リポジトリの Skill を同期する。
+# 同期したファイルと skills-lock.json をリポジトリに置くのは、クラウドセッションの開始時にネットワークなしで読み込めるようにするため。
+
+# npx --no-install は devDependencies で固定した skills CLI を使い、別バージョンを取得しない。
+# DISABLE_TELEMETRY=1 で CLI の利用統計の送信を止める。
+[doc('package.json の skills を同期し、変更されたファイルを表示する')]
+skills-sync:
+    npm ci
+    DISABLE_TELEMETRY=1 npx --no-install skills experimental_sync --agent claude-code --yes
+    git status --short -- skills-lock.json .agents/skills .claude/skills
