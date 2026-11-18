@@ -93,10 +93,9 @@ jobs:
             .
       # OCI archive を扱うのに skopeo を使う。buildx には archive を後から push する手段がなく、
       # docker daemon の従来の image store はマルチプラットフォームの index を保持できず、
-      # push 時に digest が変わりうる。
+      # push 時に digest が変わりうる。skopeo は ubuntu-24.04 ランナーに入っているものを使う。
       - name: Start the image on each architecture
         run: |
-          command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
           for arch in $PLATFORMS; do
             skopeo copy --override-arch "$arch" oci-archive:image.tar "docker-daemon:oci-vault-resolver:verify-$arch"
             out="$(docker run --rm --platform "linux/$arch" "oci-vault-resolver:verify-$arch" --version)"
@@ -148,8 +147,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install skopeo
-        run: command -v skopeo >/dev/null || sudo apt-get install -y --no-install-recommends skopeo
       # 再実行やタグの打ち直しで公開済みのタグが別の digest に置き換わらないよう、タグがないことを確かめてから push する。
       # 初回の公開ではパッケージ自体がないので、manifest unknown に加えて name unknown もタグがないものとして扱う。
       - name: Refuse to overwrite a published tag
