@@ -18,10 +18,10 @@ var secretsResource = schema.GroupResource{Resource: "secrets"}
 
 // testSecretName differs from defaultKubernetesSecretName so the tests show
 // that the writer uses the configured name.
-const testSecretName = "platform-manifest"
+const testSecretName = "app-config"
 
 func testConfig() Config {
-	return Config{Namespace: "resolver-check", SecretKey: "manifest", ManagedBy: "resolver-a", KubernetesSecretName: testSecretName}
+	return Config{Namespace: "resolver-check", SecretKey: "config", ManagedBy: "resolver-a", KubernetesSecretName: testSecretName}
 }
 
 // managedSecret is a Secret that resolver-a may replace.
@@ -33,7 +33,7 @@ func managedSecret() *corev1.Secret {
 			Labels:      map[string]string{"keep": "label"},
 		},
 		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{"manifest": []byte(`{"old":true}`), "stale": []byte("x")},
+		Data: map[string][]byte{"config": []byte(`{"old":true}`), "stale": []byte("x")},
 	}
 }
 
@@ -73,7 +73,7 @@ func TestWriteCreatesMarkedSecretWhenMissing(t *testing.T) {
 	if created.Annotations[managedByKey] != "resolver-a" || created.Type != corev1.SecretTypeOpaque {
 		t.Fatalf("created=%+v", created)
 	}
-	if len(created.Data) != 1 || string(created.Data["manifest"]) != string(content) {
+	if len(created.Data) != 1 || string(created.Data["config"]) != string(content) {
 		t.Fatalf("data=%v", created.Data)
 	}
 	if _, err := client.CoreV1().Secrets("resolver-check").Get(context.Background(), defaultKubernetesSecretName, metav1.GetOptions{}); !apierrors.IsNotFound(err) {
@@ -90,11 +90,11 @@ func TestWriteLeavesOtherSecretNamesAlone(t *testing.T) {
 	if err := (SecretWriter{Client: client}).Write(context.Background(), testConfig(), []byte(`{"new":true}`)); err != nil {
 		t.Fatal(err)
 	}
-	if after := getTarget(t, client); string(after.Data["manifest"]) != `{"new":true}` {
+	if after := getTarget(t, client); string(after.Data["config"]) != `{"new":true}` {
 		t.Fatalf("configured Secret was not updated: %v", after.Data)
 	}
 	untouched, err := client.CoreV1().Secrets("resolver-check").Get(context.Background(), defaultKubernetesSecretName, metav1.GetOptions{})
-	if err != nil || untouched.ResourceVersion != "7" || string(untouched.Data["manifest"]) != `{"old":true}` {
+	if err != nil || untouched.ResourceVersion != "7" || string(untouched.Data["config"]) != `{"old":true}` {
 		t.Fatalf("Secret %s changed: %+v, %v", defaultKubernetesSecretName, untouched, err)
 	}
 }
@@ -118,7 +118,7 @@ func TestWriteReplacesManagedSecretWhole(t *testing.T) {
 		t.Fatalf("update must carry the read resourceVersion, got %q", sentVersion)
 	}
 	after := getTarget(t, client)
-	if len(after.Data) != 1 || string(after.Data["manifest"]) != string(content) {
+	if len(after.Data) != 1 || string(after.Data["config"]) != string(content) {
 		t.Fatalf("data=%v", after.Data)
 	}
 	if len(after.Annotations) != 1 || after.Annotations[managedByKey] != "resolver-a" || len(after.Labels) != 0 {
@@ -135,6 +135,8 @@ func TestWriteRejectsUnmanagedSecretWithoutWrite(t *testing.T) {
 		{"no annotations", func(s *corev1.Secret) { s.Annotations = nil }},
 		{"different marker value", func(s *corev1.Secret) { s.Annotations[managedByKey] = "resolver-b" }},
 		{"empty marker value", func(s *corev1.Secret) { s.Annotations[managedByKey] = "" }},
+		// v0.1.x marked the SecretStore it wrote with this key. A Secret that
+		// carries only the old key was not written by this resolver.
 		{"old marker key", func(s *corev1.Secret) {
 			delete(s.Annotations, managedByKey)
 			s.Annotations["my-cloud.westelh.dev/managed-by"] = "resolver-a"
@@ -154,7 +156,7 @@ func TestWriteRejectsUnmanagedSecretWithoutWrite(t *testing.T) {
 			if !errors.Is(err, ErrSecretOwnership) || len(*writes) != 0 {
 				t.Fatalf("err=%v writes=%v", err, *writes)
 			}
-			if after := getTarget(t, client); string(after.Data["manifest"]) != `{"old":true}` {
+			if after := getTarget(t, client); string(after.Data["config"]) != `{"old":true}` {
 				t.Fatalf("Secret changed: %v", after.Data)
 			}
 		})

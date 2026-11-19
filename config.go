@@ -30,7 +30,8 @@ type Config struct {
 	KubernetesSecretName string
 }
 
-// Keep in sync with the env in cluster/bootstrap/platform/vault-resolver/templates/job.cue.
+// These names are the resolver's configuration interface; renaming one is a
+// breaking change for every deployment that sets it.
 const (
 	envRegion               = "OCI_VAULT_RESOLVER_REGION"
 	envCompartmentID        = "OCI_VAULT_RESOLVER_COMPARTMENT_ID"
@@ -44,8 +45,8 @@ const (
 func loadConfig() (Config, error) {
 	keys := []string{envCompartmentID, envRegion, envSecretName, envSecretKey, envVaultName, envManagedBy, envKubernetesSecretName, "POD_NAMESPACE"}
 	values := make(map[string]string, len(keys))
-	// Values are used as given, without trimming, so the Vault is looked up by
-	// exactly the name that cluster/bootstrap/bundle.cue checked and Terraform created.
+	// Values are used as given, without trimming, so the Vault and the Secret
+	// are looked up by exactly the names they were created with in OCI.
 	for _, key := range keys {
 		value := os.Getenv(key)
 		if key == "POD_NAMESPACE" && value == "" {
@@ -62,8 +63,9 @@ func loadConfig() (Config, error) {
 		}
 		values[key] = value
 	}
-	// Keep looser than the format rules in cluster/bootstrap/bundle.cue; these
-	// only keep the region and compartment ID safe to pass to the OCI SDK.
+	// The Vault and Secret names are left to OCI to judge, so any name OCI
+	// accepts can be configured. The checks below only cover values that the
+	// resolver passes on as identifiers or keys.
 	for _, key := range keys {
 		value := values[key]
 		switch key {
