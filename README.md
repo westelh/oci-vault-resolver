@@ -24,4 +24,8 @@ The resolver needs these permissions:
 - OCI, through Instance Principal authentication: `inspect vaults` in the compartment, and `read secret-bundles` for the secret.
 - Kubernetes, through the Pod's service account: `get`, `create` and `update` on `secrets` in the Pod's namespace. It uses no Lease or other resource.
 
-Run unit tests from the repository root with `just test`. Resolver image builds and publishes run only in the GitHub Actions workflow. Pull requests build and start both Linux architectures from one OCI archive, and pushing a `vX.Y.Z` tag publishes that same archive to `ghcr.io/westelh/oci-vault-resolver`. Published tags are not recreated.
+## Development
+
+Local checks need Go, [just](https://github.com/casey/just) and [hk](https://github.com/jdx/hk). Install just and hk with Homebrew (`brew install just hk`), Cargo (`cargo install just hk --locked`) or a binary from their GitHub releases; the versions CI uses are `JUST_VERSION` and `HK_VERSION` in `.github/workflows/resolver.yml`. Then run `hk install` once in each clone so that commits run `just fmt-check` and `just vet` on the staged changes.
+
+The checks are recipes in `justfile`, and `hk.pkl` decides when they run. `hk check --all` runs gofmt, go vet and the unit tests, which is what CI runs; `just test` runs only the unit tests. Resolver image builds and publishes run only in the GitHub Actions workflow. Pull requests build and start both Linux architectures from one OCI archive, and pushing a `vX.Y.Z` tag publishes that same archive to `ghcr.io/westelh/oci-vault-resolver`. Published tags are not recreated.

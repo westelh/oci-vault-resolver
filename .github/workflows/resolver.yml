@@ -7,6 +7,8 @@ on:
       - go.mod
       - go.sum
       - Dockerfile
+      - justfile
+      - hk.pkl
       - .github/workflows/resolver.yml
   push:
     tags:
@@ -26,6 +28,9 @@ env:
   PLATFORMS: amd64 arm64
   # タグの push ではタグ名をバイナリの version に埋め込む。それ以外は dev。
   RESOLVER_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'dev' }}
+  # just と hk の版は Dependabot では上がらないので、手で上げる。HK_VERSION は hk.pkl の版と揃える。
+  JUST_VERSION: 1.59.0
+  HK_VERSION: 2.13.0
 
 # Actions はタグの差し替えの影響を受けないようコミット SHA で固定し、Dependabot で更新する。
 # verify-image でビルドした archive をそのまま公開するので、publish 以外のジョブの Actions も固定する。
@@ -51,20 +56,28 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      # gofmt -l は未整形のファイルがあっても成功するので、出力の有無で判定する。
-      # justfile の fmt-check に同じ判定を書いている。直すときは両方を揃える。
-      - name: gofmt
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+        with:
+          just-version: ${{ env.JUST_VERSION }}
+      # hk の release は attestation 付きなので、取得したバイナリを gh で検証してから使う。
+      - name: Install hk
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          unformatted="$("$(go env GOROOT)/bin/gofmt" -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "::error::gofmt で整形されていないファイルがあります（gofmt -w で整形してください）"
-            echo "$unformatted"
+          if ! grep -Fq "/v$HK_VERSION/hk@$HK_VERSION#/" hk.pkl; then
+            echo "::error::hk.pkl の版を HK_VERSION（$HK_VERSION）と揃えてください"
             exit 1
           fi
-      - name: go vet
-        run: go vet ./...
-      - name: go test
-        run: go test ./...
+          asset=hk-x86_64-unknown-linux-gnu.tar.gz
+          dir="$RUNNER_TEMP/hk"
+          mkdir -p "$dir"
+          curl -fsSL -o "$dir/$asset" "https://github.com/jdx/hk/releases/download/v$HK_VERSION/$asset"
+          gh release verify-asset "v$HK_VERSION" "$dir/$asset" --repo jdx/hk
+          tar -xzf "$dir/$asset" -C "$dir" hk
+          echo "$dir" >> "$GITHUB_PATH"
+      # 検査の中身は justfile の recipe にあり、hk.pkl の check hook がそれを呼ぶ。
+      - name: hk check
+        run: hk check --all
 
   verify-image:
     needs: test
@@ -77,16 +90,14 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      # justfile の build に同じビルドを書いている。ldflags などを直すときは両方を揃える。
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+        with:
+          just-version: ${{ env.JUST_VERSION }}
+      # RESOLVER_VERSION はワークフローの env から justfile に渡る。出力先は justfile の既定の dist。
       - name: Build binaries
-        run: |
-          mkdir -p dist
-          for arch in $PLATFORMS; do
-            echo "Building oci-vault-resolver for linux/$arch"
-            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath \
-              -ldflags="-s -w -buildid= -X main.version=$RESOLVER_VERSION" \
-              -o "dist/oci-vault-resolver-linux-$arch" .
-          done
+        env:
+          RESOLVER_PLATFORMS: ${{ env.PLATFORMS }}
+        run: just build
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       # GHCR はマルチアーキテクチャのイメージの説明やリポジトリを config のラベルではなく index の annotation から読むため、

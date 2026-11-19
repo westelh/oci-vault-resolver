@@ -1,0 +1,40 @@
+// hk のバイナリの版（.github/workflows/resolver.yml の HK_VERSION）と、下の 2 行の版を揃える。
+amends "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Config.pkl"
+
+// 検査の中身は justfile の recipe に置き、ここでは呼ぶだけにする。
+// recipe はファイルを受け取らずリポジトリ全体を検査するので、glob は実行するかどうかの判定にだけ使う。
+local goFiles = List("**/*.go", "go.mod", "go.sum")
+
+local fmtCheck = new Config.Step {
+  glob = "**/*.go"
+  check = "just fmt-check"
+}
+
+local vet = new Config.Step {
+  glob = goFiles
+  check = "just vet"
+}
+
+local test = new Config.Step {
+  glob = goFiles
+  check = "just test"
+}
+
+hooks {
+  // ステージしていない変更を退避し、コミットする内容だけを検査する。
+  ["pre-commit"] {
+    stash = "git"
+    steps {
+      ["fmt-check"] = fmtCheck
+      ["vet"] = vet
+    }
+  }
+  // CI（resolver.yml の test ジョブ）は hk check --all でこの hook を実行する。
+  ["check"] {
+    steps {
+      ["fmt-check"] = fmtCheck
+      ["vet"] = vet
+      ["test"] = test
+    }
+  }
+}

@@ -2,6 +2,8 @@ RESOLVER_PLATFORMS := env("RESOLVER_PLATFORMS", "amd64 arm64")
 RESOLVER_BINARY_DIR := env("RESOLVER_BINARY_DIR", "dist")
 RESOLVER_VERSION := env("RESOLVER_VERSION", "dev")
 
+# fmt-check・vet・test は hk.pkl の hook から呼ばれ、CI（.github/workflows/resolver.yml）も hk 経由で実行する。
+
 # 引数なしの `just` で一覧を表示する。
 [private]
 default:
@@ -9,7 +11,6 @@ default:
 
 # gofmt -l は未整形のファイルがあっても成功するので、出力の有無で判定する。
 # go.mod の toolchain に揃えるため、PATH の gofmt ではなく go env GOROOT の gofmt を使う。
-# .github/workflows/resolver.yml の test ジョブの gofmt ステップに同じ判定を書いている。直すときは両方を揃える。
 [doc('Go コードの書式を gofmt で検査する')]
 [script]
 fmt-check:
@@ -28,8 +29,7 @@ vet:
 test:
     go test ./...
 
-# .github/workflows/resolver.yml の verify-image ジョブの Build binaries ステップに同じビルドを書いている。
-# ldflags などを直すときは両方を揃える。
+# .github/workflows/resolver.yml の verify-image ジョブもこの recipe でバイナリをビルドする。
 [doc('RESOLVER_PLATFORMS 向けに静的バイナリをビルドする')]
 [script]
 build:
