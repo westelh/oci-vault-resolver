@@ -10,7 +10,7 @@ Configuration comes only from environment variables:
 | `OCI_MANIFEST_COMPARTMENT_ID` | Compartment (or tenancy) OCID to search for the Vault. |
 | `OCI_MANIFEST_VAULT_NAME` | Display name of the Vault. |
 | `OCI_MANIFEST_SECRET_NAME` | Name of the secret in the Vault. |
-| `OCI_MANIFEST_SECRET_KEY` | Key in the Kubernetes Secret's `data`. Letters, digits, `-` and `_` only; no dots, so Timoni runtime does not read `obj.data.<key>` as a nested path. |
+| `OCI_MANIFEST_SECRET_KEY` | Key in the Kubernetes Secret's `data`. Starts with a letter and has only letters, digits and `_` (at most 253 characters), so Timoni runtime reads it as `obj.data.<key>` without quotes. |
 | `OCI_MANIFEST_MANAGED_BY` | Value of the managed-by annotation. Defaults to `oci-vault-resolver`. Give each resolver in a cluster its own value. |
 | `POD_NAMESPACE` | Namespace of the Kubernetes Secret, from the downward API. Defaults to `default`. |
 
