@@ -18,6 +18,7 @@ func TestLoadConfigRequiresEveryInput(t *testing.T) {
 		t.Fatal("expected missing input error")
 	}
 	t.Setenv("OCI_VAULT_RESOLVER_MANAGED_BY", "")
+	t.Setenv("OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", "")
 	for _, key := range keys {
 		t.Setenv(key, "value")
 	}
@@ -26,14 +27,14 @@ func TestLoadConfigRequiresEveryInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Region != "value" || cfg.SecretKey != "value" || cfg.Namespace != "default" || cfg.ManagedBy != "oci-vault-resolver" {
+	if cfg.Region != "value" || cfg.SecretKey != "value" || cfg.Namespace != "default" || cfg.ManagedBy != "oci-vault-resolver" || cfg.KubernetesSecretName != "oci-vault-resolver" {
 		t.Fatalf("unexpected config: %#v", cfg)
 	}
 }
 
 func setValidConfig(t *testing.T) {
 	t.Helper()
-	for key, value := range map[string]string{"OCI_VAULT_RESOLVER_REGION": "ap-tokyo-1", "OCI_VAULT_RESOLVER_COMPARTMENT_ID": "ocid1.compartment.oc1..example", "OCI_VAULT_RESOLVER_VAULT_NAME": "vault", "OCI_VAULT_RESOLVER_SECRET_NAME": "manifest", "OCI_VAULT_RESOLVER_SECRET_KEY": "manifest", "OCI_VAULT_RESOLVER_MANAGED_BY": "", "POD_NAMESPACE": "default"} {
+	for key, value := range map[string]string{"OCI_VAULT_RESOLVER_REGION": "ap-tokyo-1", "OCI_VAULT_RESOLVER_COMPARTMENT_ID": "ocid1.compartment.oc1..example", "OCI_VAULT_RESOLVER_VAULT_NAME": "vault", "OCI_VAULT_RESOLVER_SECRET_NAME": "manifest", "OCI_VAULT_RESOLVER_SECRET_KEY": "manifest", "OCI_VAULT_RESOLVER_MANAGED_BY": "", "OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME": "", "POD_NAMESPACE": "default"} {
 		t.Setenv(key, value)
 	}
 }
@@ -49,6 +50,13 @@ func TestLoadConfigRejectsUnsafeFields(t *testing.T) {
 		{"OCI_VAULT_RESOLVER_SECRET_KEY", "_manifest"},
 		{"OCI_VAULT_RESOLVER_SECRET_KEY", "1manifest"},
 		{"OCI_VAULT_RESOLVER_SECRET_KEY", strings.Repeat("k", 254)},
+		{"OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", "Platform-manifest"},
+		{"OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", "platform_manifest"},
+		{"OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", "platform/manifest"},
+		{"OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", "-platform-manifest"},
+		{"OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", "platform-manifest."},
+		{"OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", " platform-manifest"},
+		{"OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", strings.Repeat("s", 254)},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
 			setValidConfig(t)
@@ -89,6 +97,19 @@ func TestLoadConfigAcceptsSecretKeyAndManagedBy(t *testing.T) {
 	cfg, err := loadConfig()
 	if err != nil || cfg.SecretKey != "Platform_manifest1" || cfg.ManagedBy != "resolver-a" {
 		t.Fatalf("unexpected config: %#v, %v", cfg, err)
+	}
+}
+
+func TestLoadConfigAcceptsKubernetesSecretName(t *testing.T) {
+	for _, value := range []string{"platform-manifest", "platform.manifest", "a", strings.Repeat("s", 253)} {
+		t.Run(value, func(t *testing.T) {
+			setValidConfig(t)
+			t.Setenv("OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME", value)
+			cfg, err := loadConfig()
+			if err != nil || cfg.KubernetesSecretName != value {
+				t.Fatalf("unexpected config: %#v, %v", cfg, err)
+			}
+		})
 	}
 }
 
