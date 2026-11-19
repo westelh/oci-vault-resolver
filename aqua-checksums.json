@@ -1,0 +1,59 @@
+{
+  "checksums": [
+    {
+      "id": "github_release/github.com/casey/just/1.59.0/just-1.59.0-aarch64-apple-darwin.tar.gz",
+      "checksum": "6574CEA774ED4CAE12E24B6AA11857DE33E80DAB4667CF628FD5840DF96A2A9D",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/casey/just/1.59.0/just-1.59.0-aarch64-unknown-linux-musl.tar.gz",
+      "checksum": "23871B1702BFD550FB5F901778FD4290ECF2EE034A45A889FBE96D89B188086D",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/casey/just/1.59.0/just-1.59.0-x86_64-apple-darwin.tar.gz",
+      "checksum": "036EAD9DF9BC31DBAE9934AE3B4236ED124D0BAFCFFD33439460AE084D5C9CB7",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/casey/just/1.59.0/just-1.59.0-x86_64-pc-windows-msvc.zip",
+      "checksum": "9C5463E2D0974E31BEE71346AA5CBF19167DE1585A4ABC1BAE7B3B04604EA9C0",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/casey/just/1.59.0/just-1.59.0-x86_64-unknown-linux-musl.tar.gz",
+      "checksum": "409044617B6F06517C1035E55CA38C8C856FF8B650E41BC2AA1EF82D5903A23E",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/jdx/hk/v2.13.0/hk-aarch64-apple-darwin.tar.gz",
+      "checksum": "64EFC441DC0858A175909FD6253DDD6C540DA80E7D1BD2A2AD0EC9C0CDAB3D97",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/jdx/hk/v2.13.0/hk-aarch64-pc-windows-msvc.zip",
+      "checksum": "54D34AE2E9CE7307658C69021801A2AAD64149614EAB60640DAB7A63A18E2025",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/jdx/hk/v2.13.0/hk-aarch64-unknown-linux-gnu.tar.gz",
+      "checksum": "490196A4E638991C671F42941D72ADE4D00B14750145F34FC64377B49FC070BB",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/jdx/hk/v2.13.0/hk-x86_64-pc-windows-msvc.zip",
+      "checksum": "2908DE6281368B8128F1D4D7A03905D3AB0EB86A82641D6055BE88806BF9FFAC",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/jdx/hk/v2.13.0/hk-x86_64-unknown-linux-gnu.tar.gz",
+      "checksum": "8FF0B29C9925D73DF9B14AF7FC43ACE86DE03DB73EAFA3046750FCE5C39E1955",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "registries/github_content/github.com/aquaproj/aqua-registry/v4.589.0/registry.yaml",
+      "checksum": "E785A69E1CEF8A92F09079E96B7156FA4515255FEE4D58C1E9DCDAB23D96DCA2",
+      "algorithm": "sha256"
+    }
+  ]
+}

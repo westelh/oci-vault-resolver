@@ -26,6 +26,6 @@ The resolver needs these permissions:
 
 ## Development
 
-Local checks need Go, [just](https://github.com/casey/just) and [hk](https://github.com/jdx/hk). Install just and hk with Homebrew (`brew install just hk`), Cargo (`cargo install just hk --locked`) or a binary from their GitHub releases; the versions CI uses are `JUST_VERSION` and `HK_VERSION` in `.github/workflows/resolver.yml`. Then run `hk install` once in each clone so that commits run `just fmt-check` and `just vet` on the staged changes.
+Local checks need Go and [aqua](https://aquaproj.github.io/). `aqua.yaml` pins [just](https://github.com/casey/just) and [hk](https://github.com/jdx/hk), the same versions CI uses; run `aqua i` in the repository root to install them. aqua checks each download against `aqua-checksums.json`. Then run `hk install` once in each clone so that commits run `just fmt-check` and `just vet` on the staged changes. After changing a version in `aqua.yaml`, run `aqua upc -prune` to update `aqua-checksums.json`; the hk version must also match the one in `hk.pkl`.
 
 The checks are recipes in `justfile`, and `hk.pkl` decides when they run. `hk check --all` runs gofmt, go vet and the unit tests, which is what CI runs; `just test` runs only the unit tests. Resolver image builds and publishes run only in the GitHub Actions workflow. Pull requests build and start both Linux architectures from one OCI archive, and pushing a `vX.Y.Z` tag publishes that same archive to `ghcr.io/westelh/oci-vault-resolver`. Published tags are not recreated.

@@ -9,6 +9,8 @@ on:
       - Dockerfile
       - justfile
       - hk.pkl
+      - aqua.yaml
+      - aqua-checksums.json
       - .github/workflows/resolver.yml
   push:
     tags:
@@ -28,9 +30,8 @@ env:
   PLATFORMS: amd64 arm64
   # タグの push ではタグ名をバイナリの version に埋め込む。それ以外は dev。
   RESOLVER_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'dev' }}
-  # just と hk の版は Dependabot では上がらないので、手で上げる。HK_VERSION は hk.pkl の版と揃える。
-  JUST_VERSION: 1.59.0
-  HK_VERSION: 2.13.0
+  # hk と just は aqua.yaml で版を固定し、aqua で入れる。aqua 自身と aqua.yaml の版は Dependabot では上がらないので、手で上げる。
+  AQUA_VERSION: v2.66.1
 
 # Actions はタグの差し替えの影響を受けないようコミット SHA で固定し、Dependabot で更新する。
 # verify-image でビルドした archive をそのまま公開するので、publish 以外のジョブの Actions も固定する。
@@ -56,25 +57,32 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
-        with:
-          just-version: ${{ env.JUST_VERSION }}
-      # hk の release は attestation 付きなので、取得したバイナリを gh で検証してから使う。
-      - name: Install hk
+      # aqua は取得した hk を aqua-checksums.json の checksum と照合する。aqua-registry の hk には署名の検証がないので、
+      # その checksum が hk の release の attestation 付きの asset のものであることを gh で確かめる。
+      - name: Verify the hk checksum pinned for aqua
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! grep -Fq "/v$HK_VERSION/hk@$HK_VERSION#/" hk.pkl; then
-            echo "::error::hk.pkl の版を HK_VERSION（$HK_VERSION）と揃えてください"
+          version="$(sed -n 's|^ *- name: jdx/hk@v||p' aqua.yaml)"
+          if [ -z "$version" ] || ! grep -Fq "/v$version/hk@$version#/" hk.pkl; then
+            echo "::error::hk.pkl の版を aqua.yaml の jdx/hk の版（${version:-なし}）と揃えてください"
             exit 1
           fi
           asset=hk-x86_64-unknown-linux-gnu.tar.gz
           dir="$RUNNER_TEMP/hk"
           mkdir -p "$dir"
-          curl -fsSL -o "$dir/$asset" "https://github.com/jdx/hk/releases/download/v$HK_VERSION/$asset"
-          gh release verify-asset "v$HK_VERSION" "$dir/$asset" --repo jdx/hk
-          tar -xzf "$dir/$asset" -C "$dir" hk
-          echo "$dir" >> "$GITHUB_PATH"
+          curl -fsSL -o "$dir/$asset" "https://github.com/jdx/hk/releases/download/v$version/$asset"
+          gh release verify-asset "v$version" "$dir/$asset" --repo jdx/hk
+          actual="$(sha256sum "$dir/$asset" | cut -d' ' -f1)"
+          pinned="$(jq -r --arg id "github_release/github.com/jdx/hk/v$version/$asset" '.checksums[] | select(.id == $id) | .checksum | ascii_downcase' aqua-checksums.json)"
+          if [ "$actual" != "$pinned" ]; then
+            echo "::error::aqua-checksums.json の $asset の checksum（${pinned:-なし}）が release の asset（$actual）と違います"
+            exit 1
+          fi
+      - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
+        with:
+          aqua_version: ${{ env.AQUA_VERSION }}
+          packages: hk just
       # 検査の中身は justfile の recipe にあり、hk.pkl の check hook がそれを呼ぶ。
       - name: hk check
         run: hk check --all
@@ -90,9 +98,10 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+      - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
         with:
-          just-version: ${{ env.JUST_VERSION }}
+          aqua_version: ${{ env.AQUA_VERSION }}
+          packages: just
       # RESOLVER_VERSION はワークフローの env から justfile に渡る。出力先は justfile の既定の dist。
       - name: Build binaries
         env:

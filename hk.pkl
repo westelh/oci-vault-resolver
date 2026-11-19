@@ -1,4 +1,4 @@
-// hk のバイナリの版（.github/workflows/resolver.yml の HK_VERSION）と、下の 2 行の版を揃える。
+// hk のバイナリの版（aqua.yaml の jdx/hk）と、下の行の 2 か所の版を揃える。
 amends "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Config.pkl"
 
 // 検査の中身は justfile の recipe に置き、ここでは呼ぶだけにする。
