@@ -91,13 +91,27 @@ func ResolveVault(ctx context.Context, lister VaultLister, compartmentID, name s
 }
 
 func listWithRetry(ctx context.Context, lister VaultLister, compartmentID, page string) ([]Vault, string, string, error) {
+	var items []Vault
+	var next, requestID string
+	err := withRetry(ctx, func() error {
+		var err error
+		items, next, requestID, err = lister.List(ctx, compartmentID, page)
+		return err
+	})
+	if err != nil {
+		return nil, "", requestID, err
+	}
+	return items, next, requestID, nil
+}
+
+// withRetry calls call up to five times, retrying only errors that retryable
+// accepts, with exponential backoff and jitter capped at 10 seconds.
+func withRetry(ctx context.Context, call func() error) error {
 	var err error
 	for attempt := 0; attempt < 5; attempt++ {
-		var items []Vault
-		var next, requestID string
-		items, next, requestID, err = lister.List(ctx, compartmentID, page)
+		err = call()
 		if err == nil || !retryable(err) || attempt == 4 {
-			return items, next, requestID, err
+			return err
 		}
 		delay := time.Duration(1<<attempt)*200*time.Millisecond + time.Duration(rand.Int63n(int64(150*time.Millisecond)))
 		if delay > 10*time.Second {
@@ -107,11 +121,11 @@ func listWithRetry(ctx context.Context, lister VaultLister, compartmentID, page 
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return nil, "", requestID, ctx.Err()
+			return ctx.Err()
 		case <-timer.C:
 		}
 	}
-	return nil, "", "", err
+	return err
 }
 
 func retryable(err error) bool {
