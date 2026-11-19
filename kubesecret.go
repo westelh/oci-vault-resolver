@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	targetSecretName = "oci-vault-resolver"
-	managedByKey     = "oci-vault-resolver.westelh.dev/managed-by"
-	defaultManagedBy = "oci-vault-resolver"
-	fieldManager     = "oci-vault-resolver"
+	defaultKubernetesSecretName = "oci-vault-resolver"
+	managedByKey                = "oci-vault-resolver.westelh.dev/managed-by"
+	defaultManagedBy            = "oci-vault-resolver"
+	fieldManager                = "oci-vault-resolver"
 )
 
 var (
@@ -25,22 +25,22 @@ var (
 
 type SecretWriter struct{ Client kubernetes.Interface }
 
-// Write creates the target Secret, or replaces it whole when it carries this
-// resolver's managed-by marker and no owner reference. Any other Secret is
-// left unchanged. Writes never retry: a create that finds the Secret already
+// Write creates the Secret named by cfg.KubernetesSecretName, or replaces it
+// whole when it carries this resolver's managed-by marker and no owner
+// reference. Any other Secret is left unchanged. Writes never retry: a create that finds the Secret already
 // there, or an update whose resourceVersion is stale, fails with
 // ErrSecretConflict.
 func (w SecretWriter) Write(ctx context.Context, cfg Config, content []byte) error {
 	secrets := w.Client.CoreV1().Secrets(cfg.Namespace)
 	desired := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: targetSecretName, Namespace: cfg.Namespace,
+			Name: cfg.KubernetesSecretName, Namespace: cfg.Namespace,
 			Annotations: map[string]string{managedByKey: cfg.ManagedBy},
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{cfg.SecretKey: content},
 	}
-	current, err := secrets.Get(ctx, targetSecretName, metav1.GetOptions{})
+	current, err := secrets.Get(ctx, cfg.KubernetesSecretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		_, err = secrets.Create(ctx, desired, metav1.CreateOptions{FieldManager: fieldManager})
 		if apierrors.IsAlreadyExists(err) || apierrors.IsConflict(err) {

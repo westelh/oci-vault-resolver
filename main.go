@@ -87,7 +87,7 @@ func run(parent context.Context, args []string) error {
 	if err := (SecretWriter{Client: kube}).Write(ctx, cfg, content); err != nil {
 		return atStage("secret_write", err)
 	}
-	slog.Info("Kubernetes Secret written", "namespace", cfg.Namespace, "name", targetSecretName)
+	slog.Info("Kubernetes Secret written", "namespace", cfg.Namespace, "name", cfg.KubernetesSecretName)
 	return nil
 }
 

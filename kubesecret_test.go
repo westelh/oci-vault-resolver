@@ -16,15 +16,19 @@ import (
 
 var secretsResource = schema.GroupResource{Resource: "secrets"}
 
+// testSecretName differs from defaultKubernetesSecretName so the tests show
+// that the writer uses the configured name.
+const testSecretName = "platform-manifest"
+
 func testConfig() Config {
-	return Config{Namespace: "resolver-check", SecretKey: "manifest", ManagedBy: "resolver-a"}
+	return Config{Namespace: "resolver-check", SecretKey: "manifest", ManagedBy: "resolver-a", KubernetesSecretName: testSecretName}
 }
 
 // managedSecret is a Secret that resolver-a may replace.
 func managedSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: targetSecretName, Namespace: "resolver-check", ResourceVersion: "7",
+			Name: testSecretName, Namespace: "resolver-check", ResourceVersion: "7",
 			Annotations: map[string]string{managedByKey: "resolver-a", "other": "annotation"},
 			Labels:      map[string]string{"keep": "label"},
 		},
@@ -48,7 +52,7 @@ func recordWrites(client *fake.Clientset) *[]string {
 
 func getTarget(t *testing.T, client *fake.Clientset) *corev1.Secret {
 	t.Helper()
-	secret, err := client.CoreV1().Secrets("resolver-check").Get(context.Background(), targetSecretName, metav1.GetOptions{})
+	secret, err := client.CoreV1().Secrets("resolver-check").Get(context.Background(), testSecretName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,6 +75,27 @@ func TestWriteCreatesMarkedSecretWhenMissing(t *testing.T) {
 	}
 	if len(created.Data) != 1 || string(created.Data["manifest"]) != string(content) {
 		t.Fatalf("data=%v", created.Data)
+	}
+	if _, err := client.CoreV1().Secrets("resolver-check").Get(context.Background(), defaultKubernetesSecretName, metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("expected no Secret named %s, got %v", defaultKubernetesSecretName, err)
+	}
+}
+
+// A Secret with the default name is a different Secret: the writer neither
+// reads its marker nor changes it.
+func TestWriteLeavesOtherSecretNamesAlone(t *testing.T) {
+	other := managedSecret()
+	other.Name = defaultKubernetesSecretName
+	client := fake.NewClientset(other, managedSecret())
+	if err := (SecretWriter{Client: client}).Write(context.Background(), testConfig(), []byte(`{"new":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	if after := getTarget(t, client); string(after.Data["manifest"]) != `{"new":true}` {
+		t.Fatalf("configured Secret was not updated: %v", after.Data)
+	}
+	untouched, err := client.CoreV1().Secrets("resolver-check").Get(context.Background(), defaultKubernetesSecretName, metav1.GetOptions{})
+	if err != nil || untouched.ResourceVersion != "7" || string(untouched.Data["manifest"]) != `{"old":true}` {
+		t.Fatalf("Secret %s changed: %+v, %v", defaultKubernetesSecretName, untouched, err)
 	}
 }
 
@@ -141,7 +166,7 @@ func TestWriteFailsWithoutRetryOnCreateRace(t *testing.T) {
 	creates := 0
 	client.PrependReactor("create", "secrets", func(a clienttesting.Action) (bool, runtime.Object, error) {
 		creates++
-		return true, nil, apierrors.NewAlreadyExists(secretsResource, targetSecretName)
+		return true, nil, apierrors.NewAlreadyExists(secretsResource, testSecretName)
 	})
 	err := (SecretWriter{Client: client}).Write(context.Background(), testConfig(), []byte(`{}`))
 	if !errors.Is(err, ErrSecretConflict) || creates != 1 {
@@ -159,9 +184,9 @@ func TestWriteDistinguishesUpdateErrors(t *testing.T) {
 		conflict bool
 		want     string
 	}{
-		{"409", apierrors.NewConflict(secretsResource, targetSecretName, errors.New("stale resourceVersion")), true, "secret_write_conflict"},
-		{"403", apierrors.NewForbidden(secretsResource, targetSecretName, errors.New("denied")), false, "kubernetes_forbidden"},
-		{"404", apierrors.NewNotFound(secretsResource, targetSecretName), false, "kubernetes_not_found"},
+		{"409", apierrors.NewConflict(secretsResource, testSecretName, errors.New("stale resourceVersion")), true, "secret_write_conflict"},
+		{"403", apierrors.NewForbidden(secretsResource, testSecretName, errors.New("denied")), false, "kubernetes_forbidden"},
+		{"404", apierrors.NewNotFound(secretsResource, testSecretName), false, "kubernetes_not_found"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			client := fake.NewClientset(managedSecret())
@@ -187,7 +212,7 @@ func TestWriteDistinguishesUpdateErrors(t *testing.T) {
 func TestWriteDistinguishesGetErrors(t *testing.T) {
 	client := fake.NewClientset()
 	client.PrependReactor("get", "secrets", func(a clienttesting.Action) (bool, runtime.Object, error) {
-		return true, nil, apierrors.NewForbidden(secretsResource, targetSecretName, errors.New("denied"))
+		return true, nil, apierrors.NewForbidden(secretsResource, testSecretName, errors.New("denied"))
 	})
 	writes := recordWrites(client)
 	err := (SecretWriter{Client: client}).Write(context.Background(), testConfig(), []byte(`{}`))

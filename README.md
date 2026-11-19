@@ -1,6 +1,6 @@
 # OCI Vault resolver
 
-The resolver runs as a Kubernetes Job. In one run it copies one OCI Vault secret into one Kubernetes Secret: it finds exactly one active Vault with the configured display name, reads the current version of the named secret in that Vault, and writes the content unchanged under one key of the fixed `oci-vault-resolver` Secret in the Pod's namespace. The resolver does not parse the content; consumers read the key and decode it themselves. It does not watch the OCI secret, so run the Job again after the secret changes.
+The resolver runs as a Kubernetes Job. In one run it copies one OCI Vault secret into one Kubernetes Secret: it finds exactly one active Vault with the configured display name, reads the current version of the named secret in that Vault, and writes the content unchanged under one key of the configured Kubernetes Secret in the Pod's namespace. The resolver does not parse the content; consumers read the key and decode it themselves. It does not watch the OCI secret, so run the Job again after the secret changes.
 
 Configuration comes only from environment variables:
 
@@ -12,6 +12,7 @@ Configuration comes only from environment variables:
 | `OCI_VAULT_RESOLVER_SECRET_NAME` | Name of the secret in the Vault. |
 | `OCI_VAULT_RESOLVER_SECRET_KEY` | Key in the Kubernetes Secret's `data`. Starts with a letter and has only letters, digits and `_` (at most 253 characters), so Timoni runtime reads it as `obj.data.<key>` without quotes. |
 | `OCI_VAULT_RESOLVER_MANAGED_BY` | Value of the managed-by annotation. Defaults to `oci-vault-resolver`. Give each resolver in a cluster its own value. |
+| `OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME` | Name of the Kubernetes Secret to write. Must be a valid Secret name (a DNS subdomain: lowercase letters, digits, `-` and `.`, starting and ending with a letter or digit, at most 253 characters). Defaults to `oci-vault-resolver`. Give each resolver in a namespace its own name. |
 | `POD_NAMESPACE` | Namespace of the Kubernetes Secret, from the downward API. Defaults to `default`. |
 
 `--version` prints the build version and target OS/architecture without reading configuration or initializing OCI/Kubernetes clients.
