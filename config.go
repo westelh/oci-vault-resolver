@@ -12,9 +12,10 @@ var ErrInvalidConfig = errors.New("invalid resolver configuration")
 var regionPattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 var namespacePattern = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
-// A Secret data key without dots, so Timoni runtime does not read obj.data.<key>
-// as a nested path.
-var secretKeyPattern = regexp.MustCompile(`^[-_a-zA-Z0-9]{1,253}$`)
+// A Secret data key that Timoni runtime can read as obj.data.<key> without
+// quotes: a dot makes a nested path, "-" a subtraction, a leading "_" a hidden
+// field and a leading digit a number.
+var secretKeyPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,252}$`)
 
 type Config struct {
 	Namespace     string

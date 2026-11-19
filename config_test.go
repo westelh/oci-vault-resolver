@@ -45,6 +45,9 @@ func TestLoadConfigRejectsUnsafeFields(t *testing.T) {
 		{"POD_NAMESPACE", "bad_namespace"},
 		{"OCI_MANIFEST_SECRET_KEY", "platform.manifest"},
 		{"OCI_MANIFEST_SECRET_KEY", "bad/key"},
+		{"OCI_MANIFEST_SECRET_KEY", "platform-manifest"},
+		{"OCI_MANIFEST_SECRET_KEY", "_manifest"},
+		{"OCI_MANIFEST_SECRET_KEY", "1manifest"},
 		{"OCI_MANIFEST_SECRET_KEY", strings.Repeat("k", 254)},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
@@ -81,10 +84,10 @@ func TestLoadConfigAcceptsBundleValues(t *testing.T) {
 
 func TestLoadConfigAcceptsSecretKeyAndManagedBy(t *testing.T) {
 	setValidConfig(t)
-	t.Setenv("OCI_MANIFEST_SECRET_KEY", "platform_manifest-1")
+	t.Setenv("OCI_MANIFEST_SECRET_KEY", "Platform_manifest1")
 	t.Setenv("OCI_MANIFEST_MANAGED_BY", "resolver-a")
 	cfg, err := loadConfig()
-	if err != nil || cfg.SecretKey != "platform_manifest-1" || cfg.ManagedBy != "resolver-a" {
+	if err != nil || cfg.SecretKey != "Platform_manifest1" || cfg.ManagedBy != "resolver-a" {
 		t.Fatalf("unexpected config: %#v, %v", cfg, err)
 	}
 }
