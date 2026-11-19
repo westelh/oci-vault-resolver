@@ -90,8 +90,7 @@ jobs:
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       # GHCR はマルチアーキテクチャのイメージの説明やリポジトリを config のラベルではなく index の annotation から読むため、
-      # annotation は index に付ける。リポジトリの description は空なので上書きする。
-      # created はビルドし直しても変わらないようコミットの時刻にする。
+      # annotation は index に付ける。created はビルドし直しても変わらないようコミットの時刻にする。
       - name: Generate image labels and annotations
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -99,7 +98,6 @@ jobs:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
         with:
           labels: &meta-overrides |
-            org.opencontainers.image.description=Resolves the OCI Vault for the platform manifest and writes its SecretStore
             org.opencontainers.image.created={{commit_date 'YYYY-MM-DDTHH:mm:ss.SSS[Z]'}}
           annotations: *meta-overrides
       # 検証したものをそのまま公開するため、マルチアーキテクチャの OCI アーカイブを一度だけ作る。
