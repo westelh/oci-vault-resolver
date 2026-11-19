@@ -1,0 +1,176 @@
+name: resolver
+
+on:
+  pull_request:
+    paths:
+      - "**.go"
+      - go.mod
+      - go.sum
+      - Dockerfile
+      - .github/workflows/resolver.yml
+  push:
+    tags:
+      - "v*"
+  # test と verify-image だけを動かす。公開は v* タグの push のみ。
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/westelh/oci-vault-resolver
+  PLATFORMS: amd64 arm64
+  # タグの push ではタグ名をバイナリの version に埋め込む。それ以外は dev。
+  RESOLVER_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'dev' }}
+
+# Actions はタグの差し替えの影響を受けないようコミット SHA で固定し、Dependabot で更新する。
+# verify-image でビルドした archive をそのまま公開するので、publish 以外のジョブの Actions も固定する。
+#
+# verify-image から publish へは、イメージをレジストリではなく OCI archive の artifact で受け渡す。
+# 未検証のイメージをタグなしでもレジストリに置かず、起動確認した archive をそのまま公開するため。
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # 公開するのは vX.Y.Z の形式のタグだけ。合わないタグ（v1.2.3-rc1 など）はテストやイメージのビルドの前に落とす。
+      - name: Check the tag is vX.Y.Z
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::タグは vX.Y.Z の形式にしてください: $GITHUB_REF_NAME"
+            exit 1
+          fi
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      # gofmt -l は未整形のファイルがあっても成功するので、出力の有無で判定する。
+      # justfile の fmt-check に同じ判定を書いている。直すときは両方を揃える。
+      - name: gofmt
+        run: |
+          unformatted="$("$(go env GOROOT)/bin/gofmt" -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt で整形されていないファイルがあります（gofmt -w で整形してください）"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+
+  verify-image:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      # justfile の build に同じビルドを書いている。ldflags などを直すときは両方を揃える。
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          for arch in $PLATFORMS; do
+            echo "Building oci-vault-resolver for linux/$arch"
+            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath \
+              -ldflags="-s -w -buildid= -X main.version=$RESOLVER_VERSION" \
+              -o "dist/oci-vault-resolver-linux-$arch" .
+          done
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      # 検証したものをそのまま公開するため、マルチアーキテクチャの OCI アーカイブを一度だけ作る。
+      - name: Build multi-arch OCI archive
+        run: |
+          docker buildx build \
+            --platform "$(printf 'linux/%s,' $PLATFORMS | sed 's/,$//')" \
+            --output type=oci,dest=image.tar \
+            .
+      # OCI archive を扱うのに skopeo を使う。buildx には archive を後から push する手段がなく、
+      # docker daemon の従来の image store はマルチプラットフォームの index を保持できず、
+      # push 時に digest が変わりうる。skopeo は ubuntu-24.04 ランナーに入っているものを使う。
+      - name: Start the image on each architecture
+        run: |
+          for arch in $PLATFORMS; do
+            skopeo copy --override-arch "$arch" oci-archive:image.tar "docker-daemon:oci-vault-resolver:verify-$arch"
+            out="$(docker run --rm --platform "linux/$arch" "oci-vault-resolver:verify-$arch" --version)"
+            echo "$out"
+            expected="oci-vault-resolver $RESOLVER_VERSION linux/$arch"
+            if [ "$out" != "$expected" ]; then
+              echo "::error::想定した出力は '$expected' です"
+              exit 1
+            fi
+          done
+      # publish が使う archive なので、publish と同じ条件でだけ upload する。
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: github.repository == 'westelh/oci-vault-resolver' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: image
+          path: image.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  # 公開は v* タグの push のみ。公開済みのタグは作り直さない。
+  publish:
+    needs: verify-image
+    if: github.repository == 'westelh/oci-vault-resolver' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # push 権限があれば main 以外のコミットにも v* タグを打てるので、タグのコミットが main に入っていることを確かめる。
+      # タグを作れる人を絞っても、どのコミットに打つかは縛れないため、ここで判定する。
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check the tagged commit is on main
+        run: |
+          commit="$(git rev-parse "$GITHUB_REF^{commit}")"
+          if ! git merge-base --is-ancestor "$commit" refs/remotes/origin/main; then
+            echo "::error::$GITHUB_REF_NAME のコミット $commit は main に含まれていません。main に入ったコミットにタグを打ってください"
+            exit 1
+          fi
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: image
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # 再実行やタグの打ち直しで公開済みのタグが別の digest に置き換わらないよう、タグがないことを確かめてから push する。
+      # 初回の公開ではパッケージ自体がないので、manifest unknown に加えて name unknown もタグがないものとして扱う。
+      - name: Refuse to overwrite a published tag
+        run: |
+          if out="$(skopeo inspect --raw "docker://$IMAGE:$GITHUB_REF_NAME" 2>&1)"; then
+            echo "::error::$IMAGE:$GITHUB_REF_NAME は公開済みです"
+            exit 1
+          elif ! printf '%s' "$out" | grep -Eqi 'manifest unknown|name unknown'; then
+            echo "::error::タグの存在を確認できませんでした: $out"
+            exit 1
+          fi
+      # 検証した archive と同じ digest で公開するため、docker daemon を経由せず skopeo で直接 push する。
+      - name: Push the verified archive
+        run: |
+          skopeo copy --all --preserve-digests oci-archive:image.tar "docker://$IMAGE:$GITHUB_REF_NAME"
+      - name: Inspect the published image
+        run: |
+          {
+            echo "### $IMAGE:$GITHUB_REF_NAME"
+            echo '```'
+            docker buildx imagetools inspect "$IMAGE:$GITHUB_REF_NAME"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
