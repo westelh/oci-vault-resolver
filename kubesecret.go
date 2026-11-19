@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	targetSecretName = "platform-manifest"
+	targetSecretName = "oci-vault-resolver"
 	managedByKey     = "oci-vault-resolver.westelh.dev/managed-by"
 	defaultManagedBy = "oci-vault-resolver"
 	fieldManager     = "oci-vault-resolver"

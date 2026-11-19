@@ -29,12 +29,12 @@ type Config struct {
 
 // Keep in sync with the env in cluster/bootstrap/platform/vault-resolver/templates/job.cue.
 const (
-	envRegion        = "OCI_MANIFEST_REGION"
-	envCompartmentID = "OCI_MANIFEST_COMPARTMENT_ID"
-	envVaultName     = "OCI_MANIFEST_VAULT_NAME"
-	envSecretName    = "OCI_MANIFEST_SECRET_NAME"
-	envSecretKey     = "OCI_MANIFEST_SECRET_KEY"
-	envManagedBy     = "OCI_MANIFEST_MANAGED_BY"
+	envRegion        = "OCI_VAULT_RESOLVER_REGION"
+	envCompartmentID = "OCI_VAULT_RESOLVER_COMPARTMENT_ID"
+	envVaultName     = "OCI_VAULT_RESOLVER_VAULT_NAME"
+	envSecretName    = "OCI_VAULT_RESOLVER_SECRET_NAME"
+	envSecretKey     = "OCI_VAULT_RESOLVER_SECRET_KEY"
+	envManagedBy     = "OCI_VAULT_RESOLVER_MANAGED_BY"
 )
 
 func loadConfig() (Config, error) {

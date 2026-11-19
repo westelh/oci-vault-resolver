@@ -1,22 +1,22 @@
 # OCI Vault resolver
 
-The resolver runs as a Kubernetes Job. In one run it copies one OCI Vault secret into one Kubernetes Secret: it finds exactly one active Vault with the configured display name, reads the current version of the named secret in that Vault, and writes the content unchanged under one key of the fixed `platform-manifest` Secret in the Pod's namespace. The resolver does not parse the content; consumers read the key and decode it themselves. It does not watch the OCI secret, so run the Job again after the secret changes.
+The resolver runs as a Kubernetes Job. In one run it copies one OCI Vault secret into one Kubernetes Secret: it finds exactly one active Vault with the configured display name, reads the current version of the named secret in that Vault, and writes the content unchanged under one key of the fixed `oci-vault-resolver` Secret in the Pod's namespace. The resolver does not parse the content; consumers read the key and decode it themselves. It does not watch the OCI secret, so run the Job again after the secret changes.
 
 Configuration comes only from environment variables:
 
 | Variable | Meaning |
 | --- | --- |
-| `OCI_MANIFEST_REGION` | OCI region of the Vault. |
-| `OCI_MANIFEST_COMPARTMENT_ID` | Compartment (or tenancy) OCID to search for the Vault. |
-| `OCI_MANIFEST_VAULT_NAME` | Display name of the Vault. |
-| `OCI_MANIFEST_SECRET_NAME` | Name of the secret in the Vault. |
-| `OCI_MANIFEST_SECRET_KEY` | Key in the Kubernetes Secret's `data`. Starts with a letter and has only letters, digits and `_` (at most 253 characters), so Timoni runtime reads it as `obj.data.<key>` without quotes. |
-| `OCI_MANIFEST_MANAGED_BY` | Value of the managed-by annotation. Defaults to `oci-vault-resolver`. Give each resolver in a cluster its own value. |
+| `OCI_VAULT_RESOLVER_REGION` | OCI region of the Vault. |
+| `OCI_VAULT_RESOLVER_COMPARTMENT_ID` | Compartment (or tenancy) OCID to search for the Vault. |
+| `OCI_VAULT_RESOLVER_VAULT_NAME` | Display name of the Vault. |
+| `OCI_VAULT_RESOLVER_SECRET_NAME` | Name of the secret in the Vault. |
+| `OCI_VAULT_RESOLVER_SECRET_KEY` | Key in the Kubernetes Secret's `data`. Starts with a letter and has only letters, digits and `_` (at most 253 characters), so Timoni runtime reads it as `obj.data.<key>` without quotes. |
+| `OCI_VAULT_RESOLVER_MANAGED_BY` | Value of the managed-by annotation. Defaults to `oci-vault-resolver`. Give each resolver in a cluster its own value. |
 | `POD_NAMESPACE` | Namespace of the Kubernetes Secret, from the downward API. Defaults to `default`. |
 
 `--version` prints the build version and target OS/architecture without reading configuration or initializing OCI/Kubernetes clients.
 
-The resolver fails closed. When the Secret does not exist, it creates the Secret with the annotation `oci-vault-resolver.westelh.dev/managed-by` set to the configured value. An existing Secret is replaced whole (all its data, labels and annotations) only when that annotation has the configured value, it has no owner reference, its type is `Opaque`, and it is not immutable. Any other Secret fails the run without being changed; there is no setting to overwrite it, and the older `my-cloud.westelh.dev/managed-by` annotation is not recognized. Writes are a create, which fails when the Secret already exists, or an update carrying the resourceVersion that was read. A concurrent change makes the run fail with `secret_write_conflict` (HTTP 409) instead of retrying, which is reported apart from `kubernetes_forbidden` (403) and `kubernetes_not_found` (404). Logs never include the secret content.
+The resolver fails closed. When the Secret does not exist, it creates the Secret with the annotation `oci-vault-resolver.westelh.dev/managed-by` set to the configured value. An existing Secret is replaced whole (all its data, labels and annotations) only when that annotation has the configured value, it has no owner reference, its type is `Opaque`, and it is not immutable. Any other Secret fails the run without being changed; there is no setting to overwrite it. Writes are a create, which fails when the Secret already exists, or an update carrying the resourceVersion that was read. A concurrent change makes the run fail with `secret_write_conflict` (HTTP 409) instead of retrying, which is reported apart from `kubernetes_forbidden` (403) and `kubernetes_not_found` (404). Logs never include the secret content.
 
 The resolver needs these permissions:
 
