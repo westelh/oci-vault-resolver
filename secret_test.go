@@ -39,7 +39,7 @@ func TestFetchSecretContentReturnsDecodedContentAsIs(t *testing.T) {
 	api := &mockSecretAPI{responses: []secrets.GetSecretBundleByNameResponse{
 		bundle(secrets.Base64SecretBundleContentDetails{Content: common.String(base64.StdEncoding.EncodeToString([]byte(raw)))}),
 	}}
-	got, err := FetchSecretContent(context.Background(), api, "vault-1", "manifest")
+	got, err := FetchSecretContent(context.Background(), api, "vault-1", "config")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestFetchSecretContentReturnsDecodedContentAsIs(t *testing.T) {
 		t.Fatalf("content=%q", got)
 	}
 	request := api.requests[0]
-	if value(request.VaultId) != "vault-1" || value(request.SecretName) != "manifest" || request.Stage != secrets.GetSecretBundleByNameStageCurrent {
+	if value(request.VaultId) != "vault-1" || value(request.SecretName) != "config" || request.Stage != secrets.GetSecretBundleByNameStageCurrent {
 		t.Fatalf("request=%+v", request)
 	}
 	if request.RequestMetadata.RetryPolicy == nil {
@@ -66,7 +66,7 @@ func TestFetchSecretContentRejectsMissingOrInvalidContent(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			api := &mockSecretAPI{responses: []secrets.GetSecretBundleByNameResponse{bundle(tc.content)}}
-			_, err := FetchSecretContent(context.Background(), api, "vault-1", "manifest")
+			_, err := FetchSecretContent(context.Background(), api, "vault-1", "config")
 			if !errors.Is(err, ErrSecretContent) || classify(err) != "secret_content_invalid" {
 				t.Fatalf("err=%v", err)
 			}
@@ -80,11 +80,11 @@ func TestFetchSecretContentRejectsMissingOrInvalidContent(t *testing.T) {
 func TestFetchSecretContentRetriesOnlyTransientErrors(t *testing.T) {
 	ok := bundle(secrets.Base64SecretBundleContentDetails{Content: common.String(base64.StdEncoding.EncodeToString([]byte("{}")))})
 	api := &mockSecretAPI{responses: []secrets.GetSecretBundleByNameResponse{ok}, errs: []error{testServiceError{status: 503}}}
-	if _, err := FetchSecretContent(context.Background(), api, "vault-1", "manifest"); err != nil || len(api.requests) != 2 {
+	if _, err := FetchSecretContent(context.Background(), api, "vault-1", "config"); err != nil || len(api.requests) != 2 {
 		t.Fatalf("err=%v requests=%d", err, len(api.requests))
 	}
 	api = &mockSecretAPI{responses: []secrets.GetSecretBundleByNameResponse{ok}, errs: []error{testServiceError{status: 404}}}
-	_, err := FetchSecretContent(context.Background(), api, "vault-1", "manifest")
+	_, err := FetchSecretContent(context.Background(), api, "vault-1", "config")
 	if err == nil || len(api.requests) != 1 || classify(err) != "oci_service_error" {
 		t.Fatalf("err=%v requests=%d", err, len(api.requests))
 	}
