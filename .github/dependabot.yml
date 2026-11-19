@@ -10,3 +10,14 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # 公開直後の版を避けるため 3 日待つ。
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
