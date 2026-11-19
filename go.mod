@@ -3,7 +3,7 @@ module github.com/westelh/oci-vault-resolver
 go 1.27.2
 
 require (
-	github.com/oracle/oci-go-sdk/v65 v65.129.0
+	github.com/oracle/oci-go-sdk/v65 v65.130.0
 	k8s.io/api v0.37.2
 	k8s.io/apimachinery v0.37.2
 	k8s.io/client-go v0.37.2
