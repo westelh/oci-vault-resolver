@@ -5,3 +5,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # ワークフローの Actions はコミット SHA で固定しているので、更新は Dependabot に任せる。
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
