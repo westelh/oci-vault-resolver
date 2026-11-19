@@ -1,9 +1,26 @@
 # OCI Vault resolver
 
-The resolver runs as the fixed `default/platform-vault-resolver` Job and is configured only through the `OCI_MANIFEST_*` variables (`REGION`, `COMPARTMENT_ID`, `VAULT_NAME`, `SECRET_NAME`) and the downward API `POD_UID`. It uses OCI Instance Principal authentication, lists vault metadata only, and creates or updates the fixed `default/platform-manifest` SecretStore after finding exactly one active Vault with the configured display name.
+The resolver runs as a Kubernetes Job. In one run it copies one OCI Vault secret into one Kubernetes Secret: it finds exactly one active Vault with the configured display name, reads the current version of the named secret in that Vault, and writes the content unchanged under one key of the fixed `platform-manifest` Secret in the Pod's namespace. The resolver does not parse the content; consumers read the key and decode it themselves. It does not watch the OCI secret, so run the Job again after the secret changes.
+
+Configuration comes only from environment variables:
+
+| Variable | Meaning |
+| --- | --- |
+| `OCI_MANIFEST_REGION` | OCI region of the Vault. |
+| `OCI_MANIFEST_COMPARTMENT_ID` | Compartment (or tenancy) OCID to search for the Vault. |
+| `OCI_MANIFEST_VAULT_NAME` | Display name of the Vault. |
+| `OCI_MANIFEST_SECRET_NAME` | Name of the secret in the Vault. |
+| `OCI_MANIFEST_SECRET_KEY` | Key in the Kubernetes Secret's `data`. Starts with a letter and has only letters, digits and `_` (at most 253 characters), so Timoni runtime reads it as `obj.data.<key>` without quotes. |
+| `OCI_MANIFEST_MANAGED_BY` | Value of the managed-by annotation. Defaults to `oci-vault-resolver`. Give each resolver in a cluster its own value. |
+| `POD_NAMESPACE` | Namespace of the Kubernetes Secret, from the downward API. Defaults to `default`. |
 
 `--version` prints the build version and target OS/architecture without reading configuration or initializing OCI/Kubernetes clients.
 
-An existing SecretStore is updated only when its resolver ownership marker is present, it has no owner reference, it uses only the Oracle provider, and its current region, Vault OCID, and compartment OCID are all explicit and match the resolver's resolved target. `principalType` may be omitted or set to `InstancePrincipal`. Missing, malformed, or different values fail closed without changing the Store. In particular, the resolver does not fill in a missing compartment or adopt a Store that points at another Vault. An operator must inspect and repair the Store before retrying.
+The resolver fails closed. When the Secret does not exist, it creates the Secret with the annotation `oci-vault-resolver.westelh.dev/managed-by` set to the configured value. An existing Secret is replaced whole (all its data, labels and annotations) only when that annotation has the configured value, it has no owner reference, its type is `Opaque`, and it is not immutable. Any other Secret fails the run without being changed; there is no setting to overwrite it, and the older `my-cloud.westelh.dev/managed-by` annotation is not recognized. Writes are a create, which fails when the Secret already exists, or an update carrying the resourceVersion that was read. A concurrent change makes the run fail with `secret_write_conflict` (HTTP 409) instead of retrying, which is reported apart from `kubernetes_forbidden` (403) and `kubernetes_not_found` (404). Logs never include the secret content.
+
+The resolver needs these permissions:
+
+- OCI, through Instance Principal authentication: `inspect vaults` in the compartment, and `read secret-bundles` for the secret.
+- Kubernetes, through the Pod's service account: `get`, `create` and `update` on `secrets` in the Pod's namespace. It uses no Lease or other resource.
 
 Run unit tests from the repository root with `just test`. Resolver image builds and publishes run only in the GitHub Actions workflow. Pull requests build and start both Linux architectures from one OCI archive, and pushing a `vX.Y.Z` tag publishes that same archive to `ghcr.io/westelh/oci-vault-resolver`. Published tags are not recreated.

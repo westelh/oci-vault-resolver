@@ -22,7 +22,7 @@ func (m *mockOCIAPI) ListVaults(_ context.Context, request keymanagement.ListVau
 	return r, m.err
 }
 
-func TestOCIAdapterMapsPaginationAndDoesNotFetchSecrets(t *testing.T) {
+func TestOCIAdapterMapsPagination(t *testing.T) {
 	next := "page-2"
 	id := "v1"
 	name := "vault"

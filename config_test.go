@@ -10,13 +10,14 @@ import (
 )
 
 func TestLoadConfigRequiresEveryInput(t *testing.T) {
-	keys := []string{"OCI_MANIFEST_REGION", "OCI_MANIFEST_COMPARTMENT_ID", "OCI_MANIFEST_VAULT_NAME", "OCI_MANIFEST_SECRET_NAME", "POD_UID"}
+	keys := []string{"OCI_MANIFEST_REGION", "OCI_MANIFEST_COMPARTMENT_ID", "OCI_MANIFEST_VAULT_NAME", "OCI_MANIFEST_SECRET_NAME", "OCI_MANIFEST_SECRET_KEY"}
 	for _, key := range keys {
 		t.Setenv(key, "")
 	}
 	if _, err := loadConfig(); err == nil {
 		t.Fatal("expected missing input error")
 	}
+	t.Setenv("OCI_MANIFEST_MANAGED_BY", "")
 	for _, key := range keys {
 		t.Setenv(key, "value")
 	}
@@ -25,14 +26,14 @@ func TestLoadConfigRequiresEveryInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Region != "value" || cfg.PodUID != "value" || cfg.Namespace != "default" {
+	if cfg.Region != "value" || cfg.SecretKey != "value" || cfg.Namespace != "default" || cfg.ManagedBy != "oci-vault-resolver" {
 		t.Fatalf("unexpected config: %#v", cfg)
 	}
 }
 
 func setValidConfig(t *testing.T) {
 	t.Helper()
-	for key, value := range map[string]string{"OCI_MANIFEST_REGION": "ap-tokyo-1", "OCI_MANIFEST_COMPARTMENT_ID": "ocid1.compartment.oc1..example", "OCI_MANIFEST_VAULT_NAME": "vault", "OCI_MANIFEST_SECRET_NAME": "manifest", "POD_UID": "pod", "POD_NAMESPACE": "default"} {
+	for key, value := range map[string]string{"OCI_MANIFEST_REGION": "ap-tokyo-1", "OCI_MANIFEST_COMPARTMENT_ID": "ocid1.compartment.oc1..example", "OCI_MANIFEST_VAULT_NAME": "vault", "OCI_MANIFEST_SECRET_NAME": "manifest", "OCI_MANIFEST_SECRET_KEY": "manifest", "OCI_MANIFEST_MANAGED_BY": "", "POD_NAMESPACE": "default"} {
 		t.Setenv(key, value)
 	}
 }
@@ -42,6 +43,12 @@ func TestLoadConfigRejectsUnsafeFields(t *testing.T) {
 		{"OCI_MANIFEST_REGION", "bad region"},
 		{"OCI_MANIFEST_COMPARTMENT_ID", "ocid1.vault.oc1..example"},
 		{"POD_NAMESPACE", "bad_namespace"},
+		{"OCI_MANIFEST_SECRET_KEY", "platform.manifest"},
+		{"OCI_MANIFEST_SECRET_KEY", "bad/key"},
+		{"OCI_MANIFEST_SECRET_KEY", "platform-manifest"},
+		{"OCI_MANIFEST_SECRET_KEY", "_manifest"},
+		{"OCI_MANIFEST_SECRET_KEY", "1manifest"},
+		{"OCI_MANIFEST_SECRET_KEY", strings.Repeat("k", 254)},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
 			setValidConfig(t)
@@ -75,8 +82,18 @@ func TestLoadConfigAcceptsBundleValues(t *testing.T) {
 	}
 }
 
+func TestLoadConfigAcceptsSecretKeyAndManagedBy(t *testing.T) {
+	setValidConfig(t)
+	t.Setenv("OCI_MANIFEST_SECRET_KEY", "Platform_manifest1")
+	t.Setenv("OCI_MANIFEST_MANAGED_BY", "resolver-a")
+	cfg, err := loadConfig()
+	if err != nil || cfg.SecretKey != "Platform_manifest1" || cfg.ManagedBy != "resolver-a" {
+		t.Fatalf("unexpected config: %#v, %v", cfg, err)
+	}
+}
+
 func TestLoadConfigAcceptsNamespace(t *testing.T) {
-	for key, value := range map[string]string{"OCI_MANIFEST_REGION": "ap-tokyo-1", "OCI_MANIFEST_COMPARTMENT_ID": "ocid1.compartment.oc1..example", "OCI_MANIFEST_VAULT_NAME": "vault", "OCI_MANIFEST_SECRET_NAME": "manifest", "POD_UID": "pod", "POD_NAMESPACE": "resolver-check"} {
+	for key, value := range map[string]string{"OCI_MANIFEST_REGION": "ap-tokyo-1", "OCI_MANIFEST_COMPARTMENT_ID": "ocid1.compartment.oc1..example", "OCI_MANIFEST_VAULT_NAME": "vault", "OCI_MANIFEST_SECRET_NAME": "manifest", "OCI_MANIFEST_SECRET_KEY": "manifest", "POD_NAMESPACE": "resolver-check"} {
 		t.Setenv(key, value)
 	}
 	cfg, err := loadConfig()
@@ -86,7 +103,7 @@ func TestLoadConfigAcceptsNamespace(t *testing.T) {
 }
 
 func TestLoadConfigAcceptsTenancyAsRootCompartment(t *testing.T) {
-	for key, value := range map[string]string{"OCI_MANIFEST_REGION": "ap-tokyo-1", "OCI_MANIFEST_COMPARTMENT_ID": "ocid1.tenancy.oc1..example", "OCI_MANIFEST_VAULT_NAME": "vault", "OCI_MANIFEST_SECRET_NAME": "manifest", "POD_UID": "pod"} {
+	for key, value := range map[string]string{"OCI_MANIFEST_REGION": "ap-tokyo-1", "OCI_MANIFEST_COMPARTMENT_ID": "ocid1.tenancy.oc1..example", "OCI_MANIFEST_VAULT_NAME": "vault", "OCI_MANIFEST_SECRET_NAME": "manifest", "OCI_MANIFEST_SECRET_KEY": "manifest"} {
 		t.Setenv(key, value)
 	}
 	cfg, err := loadConfig()

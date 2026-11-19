@@ -15,6 +15,8 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/common/auth"
 	"github.com/oracle/oci-go-sdk/v65/keymanagement"
+	"github.com/oracle/oci-go-sdk/v65/secrets"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var version = "dev"
@@ -24,9 +26,12 @@ func main() {
 		var status any
 		var reqID any
 		var serviceErr common.ServiceError
+		var apiStatus apierrors.APIStatus
 		if errors.As(err, &serviceErr) {
 			status = serviceErr.GetHTTPStatusCode()
 			reqID = serviceErr.GetOpcRequestID()
+		} else if errors.As(err, &apiStatus) {
+			status = apiStatus.Status().Code
 		}
 		slog.Error("resolver failed", "stage", failureStage(err), "error_type", classify(err), "http_status", status, "request_id", reqID)
 		os.Exit(1)
@@ -57,24 +62,6 @@ func run(parent context.Context, args []string) error {
 	if err != nil {
 		return atStage("kubernetes_client", err)
 	}
-	lease, err := NewKubernetesLease(kube, cfg.PodUID, cfg.Namespace)
-	if err != nil {
-		return atStage("lease_initialize", err)
-	}
-	if err := lease.Acquire(ctx); err != nil {
-		return atStage("lease_acquire", err)
-	}
-	workCtx, workCancel := context.WithCancel(ctx)
-	defer workCancel()
-	go func() {
-		lease.Renew(workCtx)
-		workCancel()
-	}()
-	defer func() {
-		if err := lease.Release(context.Background()); err != nil {
-			slog.Warn("lease release failed", "stage", "lease_release", "error_type", classify(err))
-		}
-	}()
 	provider, err := auth.InstancePrincipalConfigurationProviderForRegion(common.Region(cfg.Region))
 	if err != nil {
 		return atStage("oci_authentication", err)
@@ -84,18 +71,23 @@ func run(parent context.Context, args []string) error {
 		return atStage("oci_client", err)
 	}
 	client.SetRegion(cfg.Region)
-	vault, err := ResolveVault(workCtx, OCIListVaults{Client: client}, cfg.CompartmentID, cfg.VaultName)
+	vault, err := ResolveVault(ctx, OCIListVaults{Client: client}, cfg.CompartmentID, cfg.VaultName)
 	if err != nil {
 		return atStage("vault_lookup", err)
 	}
-	if err := lease.AssertHeld(workCtx); err != nil {
-		return atStage("lease_assert", err)
+	secretsClient, err := secrets.NewSecretsClientWithConfigurationProvider(provider)
+	if err != nil {
+		return atStage("oci_client", err)
 	}
-	store := NewKubernetesStore(kube)
-	if err := store.Ensure(workCtx, cfg, vault.ID, func(check context.Context) error { return lease.AssertHeld(check) }); err != nil {
-		return atStage("secretstore_sync", err)
+	secretsClient.SetRegion(cfg.Region)
+	content, err := FetchSecretContent(ctx, secretsClient, vault.ID, cfg.SecretName)
+	if err != nil {
+		return atStage("secret_fetch", err)
 	}
-	slog.Info("SecretStore synchronized", "vault_count", 1)
+	if err := (SecretWriter{Client: kube}).Write(ctx, cfg, content); err != nil {
+		return atStage("secret_write", err)
+	}
+	slog.Info("Kubernetes Secret written", "namespace", cfg.Namespace, "name", targetSecretName)
 	return nil
 }
 
@@ -117,7 +109,7 @@ func failureStage(err error) string {
 	if errors.As(err, &e) {
 		return e.stage
 	}
-	return "lease_release"
+	return "unknown"
 }
 
 func classify(err error) string {
@@ -144,10 +136,20 @@ func classify(err error) string {
 		return "vault_ambiguous"
 	case errors.Is(err, ErrInvalidConfig):
 		return "invalid_input"
-	case errors.Is(err, ErrLeaseHeld), errors.Is(err, ErrLeaseLost):
-		return "lease_conflict"
-	case errors.Is(err, ErrStoreOwnership):
-		return "store_ownership_conflict"
+	case errors.Is(err, ErrSecretOwnership):
+		return "secret_ownership_conflict"
+	case errors.Is(err, ErrSecretConflict):
+		return "secret_write_conflict"
+	case errors.Is(err, ErrSecretContent):
+		return "secret_content_invalid"
+	case apierrors.IsForbidden(err):
+		return "kubernetes_forbidden"
+	case apierrors.IsNotFound(err):
+		return "kubernetes_not_found"
+	case apierrors.IsUnauthorized(err):
+		return "kubernetes_unauthorized"
+	case apierrors.IsInvalid(err):
+		return "kubernetes_invalid"
 	case errors.Is(err, context.DeadlineExceeded):
 		return "timeout"
 	case errors.Is(err, context.Canceled):
