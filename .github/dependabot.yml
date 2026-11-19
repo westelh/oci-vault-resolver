@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # Dockerfile のベースイメージは digest で固定しているので、更新は Dependabot に任せる。
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
