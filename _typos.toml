@@ -1,0 +1,4 @@
+[files]
+# .github や .golangci.yml などのドットファイルも検査する。.git はリポジトリの中身ではないので外す。
+ignore-hidden = false
+extend-exclude = [".git/"]
