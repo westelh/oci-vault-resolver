@@ -28,6 +28,12 @@ vet:
 lint:
     golangci-lint run ./...
 
+# アプリのモジュールとは別の go.mod にするのは、govulncheck の依存がアプリの依存の版を引き上げないようにするため。
+# 脆弱性データベース（vuln.go.dev）の取得にネットワークが要るので、hk には入れず CI だけで実行する。
+[doc('コードから到達できる既知の脆弱性を govulncheck で検査する')]
+vuln:
+    go tool -modfile=tools/go.mod govulncheck ./...
+
 # run: のシェルは PATH の shellcheck で検査する。
 [doc('GitHub Actions のワークフローを actionlint で検査する')]
 actionlint:
