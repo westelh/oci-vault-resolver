@@ -9,7 +9,6 @@ default:
 
 # gofmt -l は未整形のファイルがあっても成功するので、出力の有無で判定する。
 # go.mod の toolchain に揃えるため、PATH の gofmt ではなく go env GOROOT の gofmt を使う。
-# .github/workflows/resolver.yml の test ジョブの gofmt ステップに同じ判定を書いている。直すときは両方を揃える。
 [doc('Go コードの書式を gofmt で検査する')]
 [script]
 fmt-check:
@@ -28,8 +27,6 @@ vet:
 test:
     go test ./...
 
-# .github/workflows/resolver.yml の verify-image ジョブの Build binaries ステップに同じビルドを書いている。
-# ldflags などを直すときは両方を揃える。
 [doc('RESOLVER_PLATFORMS 向けに静的バイナリをビルドする')]
 [script]
 build:

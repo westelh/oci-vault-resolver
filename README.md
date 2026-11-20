@@ -24,4 +24,8 @@ The resolver needs these permissions:
 - OCI, through Instance Principal authentication: `inspect vaults` in the compartment, and `read secret-bundles` for the secret.
 - Kubernetes, through the Pod's service account: `get`, `create` and `update` on `secrets` in the Pod's namespace. It uses no Lease or other resource.
 
-Run unit tests from the repository root with `just test`. Resolver image builds and publishes run only in the GitHub Actions workflow. Pull requests build and start both Linux architectures from one OCI archive, and pushing a `vX.Y.Z` tag publishes that same archive to `ghcr.io/westelh/oci-vault-resolver`. Published tags are not recreated.
+## Development
+
+Local checks need Go and [aqua](https://aquaproj.github.io/). Run `aqua i` to install [just](https://github.com/casey/just) and [hk](https://github.com/jdx/hk), then `hk install` once in each clone to enable the Git hooks. Run the checks with `hk check --all`. After changing a version in `aqua.yaml`, run `aqua upc -prune` to update `aqua-checksums.json`.
+
+Resolver image builds and publishes run only in the GitHub Actions workflow. Pull requests build and start both Linux architectures from one OCI archive, and pushing a `vX.Y.Z` tag publishes that same archive to `ghcr.io/westelh/oci-vault-resolver`. Published tags are not recreated.
