@@ -1,0 +1,51 @@
+name: govulncheck
+
+# 脆弱性データベースは依存を変えなくても更新されるので、PR に加えて週次でも検査する。
+on:
+  pull_request:
+    paths:
+      - "**.go"
+      - go.mod
+      - go.sum
+      - tools/go.mod
+      - tools/go.sum
+      - justfile
+      - aqua.yaml
+      - aqua-checksums.json
+      - .github/workflows/govulncheck.yml
+  schedule:
+    - cron: "37 20 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  AQUA_VERSION: v2.66.1
+
+# Actions はタグの差し替えの影響を受けないようコミット SHA で固定し、Dependabot で更新する。
+jobs:
+  govulncheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      # 標準ライブラリの脆弱性は実行する Go の版で判定されるので、go.mod の版の Go を入れる。
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
+      - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
+        with:
+          aqua_version: ${{ env.AQUA_VERSION }}
+          packages: just
+      - name: govulncheck
+        run: just vuln

@@ -25,3 +25,14 @@ updates:
       go-dependencies:
         patterns:
           - "*"
+  # govulncheck を tool として固定している tools/go.mod。
+  - package-ecosystem: gomod
+    directory: /tools
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      tools:
+        patterns:
+          - "*"
