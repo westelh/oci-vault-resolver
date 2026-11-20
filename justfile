@@ -19,6 +19,12 @@ fmt-check:
       exit 1
     fi
 
+# go mod verify は go.sum と照らしてモジュールキャッシュの改ざんを見つける。
+[doc('go.mod と go.sum のずれを go mod tidy -diff で、モジュールキャッシュの改ざんを go mod verify で検査する')]
+mod-check:
+    go mod tidy -diff
+    go mod verify
+
 [doc('Go コードを go vet で検査する')]
 vet:
     go vet ./...

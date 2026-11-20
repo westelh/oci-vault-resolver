@@ -7,6 +7,11 @@ local fmtCheck = new Config.Step {
   check = "just fmt-check"
 }
 
+local modCheck = new Config.Step {
+  glob = List("go.mod", "go.sum")
+  check = "just mod-check"
+}
+
 local vet = new Config.Step {
   glob = goFiles
   check = "just vet"
@@ -46,6 +51,7 @@ hooks {
   ["check"] {
     steps {
       ["fmt-check"] = fmtCheck
+      ["mod-check"] = modCheck
       ["vet"] = vet
       ["lint"] = lint
       ["actionlint"] = actionlint
