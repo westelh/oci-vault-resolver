@@ -50,9 +50,11 @@ actionlint:
 zizmor:
     zizmor .github
 
-[doc('Go テストを実行する')]
+# -race は cgo が要るので CGO_ENABLED=1 を明示する。
+# -shuffle=on は失敗したパッケージの出力に -test.shuffle <seed> を出すので、-shuffle=<seed> で順序を再現できる。
+[doc('Go テストを -race と -shuffle=on で実行する')]
 test:
-    go test ./...
+    CGO_ENABLED=1 go test -race -shuffle=on ./...
 
 [doc('RESOLVER_PLATFORMS 向けに静的バイナリをビルドする')]
 [script]
