@@ -28,8 +28,7 @@ vet:
 lint:
     golangci-lint run ./...
 
-# govulncheck は tools/go.mod の tool で版を固定する。go tool で go.mod と同じ toolchain でビルドされるので、
-# 古い Go でビルドした govulncheck が新しい Go のコードを読めずに失敗することがない。
+# govulncheck は tools/go.mod の tool で版を固定する。
 # アプリのモジュールとは別の go.mod にするのは、govulncheck の依存がアプリの依存の版を引き上げないようにするため。
 # 脆弱性データベース（vuln.go.dev）の取得にネットワークが要るので、hk には入れず CI だけで実行する。
 [doc('コードから到達できる既知の脆弱性を govulncheck で検査する')]
