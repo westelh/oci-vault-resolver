@@ -44,7 +44,6 @@ actionlint:
 zizmor:
     zizmor .github
 
-# 設定は _typos.toml。誤検知する語はそこで許す。
 [doc('コード・コメント・ドキュメントのスペルミスを typos で検査する')]
 typos:
     typos
