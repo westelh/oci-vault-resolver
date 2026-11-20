@@ -23,6 +23,11 @@ fmt-check:
 vet:
     go vet ./...
 
+# 設定は .golangci.yml。
+[doc('Go コードを golangci-lint で検査する')]
+lint:
+    golangci-lint run ./...
+
 [doc('Go テストを実行する')]
 test:
     go test ./...

@@ -11,6 +11,7 @@ on:
       - hk.pkl
       - aqua.yaml
       - aqua-checksums.json
+      - .golangci.yml
       - .github/workflows/resolver.yml
   push:
     tags:
@@ -59,7 +60,7 @@ jobs:
       - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
         with:
           aqua_version: ${{ env.AQUA_VERSION }}
-          packages: hk just
+          packages: hk just golangci-lint
       - name: hk check
         run: hk check --all
 
