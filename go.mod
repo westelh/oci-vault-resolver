@@ -1,6 +1,6 @@
 module github.com/westelh/oci-vault-resolver
 
-go 1.27.2
+go 1.27.4
 
 require (
 	github.com/oracle/oci-go-sdk/v65 v65.130.0
