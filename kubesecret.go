@@ -19,8 +19,8 @@ const (
 )
 
 var (
-	ErrSecretOwnership = errors.New("Kubernetes Secret is not managed by this resolver")
-	ErrSecretConflict  = errors.New("Kubernetes Secret was changed concurrently")
+	ErrSecretOwnership = errors.New("the Kubernetes Secret is not managed by this resolver")
+	ErrSecretConflict  = errors.New("the Kubernetes Secret was changed concurrently")
 )
 
 type SecretWriter struct{ Client kubernetes.Interface }
