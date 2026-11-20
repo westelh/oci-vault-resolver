@@ -25,3 +25,8 @@ linters:
       - path: ^vault\.go$
         linters: [gosec]
         text: "G404:"
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports

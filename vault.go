@@ -153,6 +153,7 @@ func optionalString(v string) *string {
 	}
 	return common.String(v)
 }
+
 func value(v *string) string {
 	if v == nil {
 		return ""

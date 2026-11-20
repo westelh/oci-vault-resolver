@@ -7,17 +7,14 @@ RESOLVER_VERSION := env("RESOLVER_VERSION", "dev")
 default:
     @just --justfile "{{ justfile() }}" --list
 
-# gofmt -l は未整形のファイルがあっても成功するので、出力の有無で判定する。
-# go.mod の toolchain に揃えるため、PATH の gofmt ではなく go env GOROOT の gofmt を使う。
-[doc('Go コードの書式を gofmt で検査する')]
-[script]
+# 設定は .golangci.yml。
+[doc('Go コードの書式を golangci-lint の formatter で検査する')]
 fmt-check:
-    unformatted="$("$(go env GOROOT)/bin/gofmt" -l .)"
-    if [ -n "$unformatted" ]; then
-      echo "gofmt で整形されていないファイルがあります（gofmt -w で整形してください）:"
-      echo "$unformatted"
-      exit 1
-    fi
+    golangci-lint fmt --diff
+
+[doc('Go コードを golangci-lint の formatter で整形する')]
+fmt:
+    golangci-lint fmt
 
 # go mod verify は go.sum と照らしてモジュールキャッシュの改ざんを見つける。
 # govulncheck 用の tools/go.mod も Dependabot で更新されるので、同じように検査する。
