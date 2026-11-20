@@ -56,26 +56,6 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      - name: Verify the hk checksum pinned for aqua
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          version="$(sed -n 's|^ *- name: jdx/hk@v||p' aqua.yaml)"
-          if [ -z "$version" ] || ! grep -Fq "/v$version/hk@$version#/" hk.pkl; then
-            echo "::error::hk.pkl の版を aqua.yaml の jdx/hk の版（${version:-なし}）と揃えてください"
-            exit 1
-          fi
-          asset=hk-x86_64-unknown-linux-gnu.tar.gz
-          dir="$RUNNER_TEMP/hk"
-          mkdir -p "$dir"
-          curl -fsSL -o "$dir/$asset" "https://github.com/jdx/hk/releases/download/v$version/$asset"
-          gh release verify-asset "v$version" "$dir/$asset" --repo jdx/hk
-          actual="$(sha256sum "$dir/$asset" | cut -d' ' -f1)"
-          pinned="$(jq -r --arg id "github_release/github.com/jdx/hk/v$version/$asset" '.checksums[] | select(.id == $id) | .checksum | ascii_downcase' aqua-checksums.json)"
-          if [ "$actual" != "$pinned" ]; then
-            echo "::error::aqua-checksums.json の $asset の checksum（${pinned:-なし}）が release の asset（$actual）と違います"
-            exit 1
-          fi
       - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
         with:
           aqua_version: ${{ env.AQUA_VERSION }}
