@@ -30,7 +30,7 @@ env:
   PLATFORMS: amd64 arm64
   # タグの push ではタグ名をバイナリの version に埋め込む。それ以外は dev。
   RESOLVER_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'dev' }}
-  # hk と just は aqua.yaml で版を固定し、aqua で入れる。aqua 自身と aqua.yaml の版は Dependabot では上がらないので、手で上げる。
+  # aqua 自身と aqua.yaml の版は Dependabot では上がらないので、手で上げる。
   AQUA_VERSION: v2.66.1
 
 # Actions はタグの差し替えの影響を受けないようコミット SHA で固定し、Dependabot で更新する。
@@ -57,8 +57,7 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      # aqua は取得した hk を aqua-checksums.json の checksum と照合する。aqua-registry の hk には署名の検証がないので、
-      # その checksum が hk の release の attestation 付きの asset のものであることを gh で確かめる。
+      # aqua-registry の hk には署名の検証がないので、aqua-checksums.json の checksum が attestation 付きの asset のものかを確かめる。
       - name: Verify the hk checksum pinned for aqua
         env:
           GH_TOKEN: ${{ github.token }}
@@ -83,7 +82,6 @@ jobs:
         with:
           aqua_version: ${{ env.AQUA_VERSION }}
           packages: hk just
-      # 検査の中身は justfile の recipe にあり、hk.pkl の check hook がそれを呼ぶ。
       - name: hk check
         run: hk check --all
 
@@ -102,7 +100,6 @@ jobs:
         with:
           aqua_version: ${{ env.AQUA_VERSION }}
           packages: just
-      # RESOLVER_VERSION はワークフローの env から justfile に渡る。出力先は justfile の既定の dist。
       - name: Build binaries
         env:
           RESOLVER_PLATFORMS: ${{ env.PLATFORMS }}

@@ -1,7 +1,5 @@
-// hk のバイナリの版（aqua.yaml の jdx/hk）と、下の行の 2 か所の版を揃える。
 amends "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Config.pkl"
 
-// 検査の中身は justfile の recipe に置き、ここでは呼ぶだけにする。
 // recipe はファイルを受け取らずリポジトリ全体を検査するので、glob は実行するかどうかの判定にだけ使う。
 local goFiles = List("**/*.go", "go.mod", "go.sum")
 
@@ -21,7 +19,6 @@ local test = new Config.Step {
 }
 
 hooks {
-  // ステージしていない変更を退避し、コミットする内容だけを検査する。
   ["pre-commit"] {
     stash = "git"
     steps {
@@ -29,7 +26,6 @@ hooks {
       ["vet"] = vet
     }
   }
-  // CI（resolver.yml の test ジョブ）は hk check --all でこの hook を実行する。
   ["check"] {
     steps {
       ["fmt-check"] = fmtCheck
