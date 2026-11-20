@@ -1,3 +1,5 @@
+// Command oci-vault-resolver copies one OCI Vault secret into one Kubernetes
+// Secret in the Pod's namespace. It runs once as a Kubernetes Job.
 package main
 
 import (
