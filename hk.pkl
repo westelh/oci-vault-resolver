@@ -12,6 +12,11 @@ local vet = new Config.Step {
   check = "just vet"
 }
 
+local lint = new Config.Step {
+  glob = List("**/*.go", "go.mod", "go.sum", ".golangci.yml")
+  check = "just lint"
+}
+
 local test = new Config.Step {
   glob = goFiles
   check = "just test"
@@ -23,12 +28,14 @@ hooks {
     steps {
       ["fmt-check"] = fmtCheck
       ["vet"] = vet
+      ["lint"] = lint
     }
   }
   ["check"] {
     steps {
       ["fmt-check"] = fmtCheck
       ["vet"] = vet
+      ["lint"] = lint
       ["test"] = test
     }
   }

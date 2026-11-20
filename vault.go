@@ -144,10 +144,7 @@ func retryable(err error) bool {
 		return true
 	}
 	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return true
-	}
-	return false
+	return errors.As(err, &netErr)
 }
 
 func optionalString(v string) *string {
@@ -163,5 +160,3 @@ func value(v *string) string {
 	return *v
 }
 func retryPolicyPointer() *common.RetryPolicy { p := common.NoRetryPolicy(); return &p }
-
-func asDiscovered(v Vault, lifecycle string) Vault { v.LifecycleState = lifecycle; return v }
