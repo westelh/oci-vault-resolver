@@ -2,8 +2,6 @@ RESOLVER_PLATFORMS := env("RESOLVER_PLATFORMS", "amd64 arm64")
 RESOLVER_BINARY_DIR := env("RESOLVER_BINARY_DIR", "dist")
 RESOLVER_VERSION := env("RESOLVER_VERSION", "dev")
 
-# fmt-check・vet・test は hk.pkl の hook から呼ばれ、CI（.github/workflows/resolver.yml）も hk 経由で実行する。
-
 # 引数なしの `just` で一覧を表示する。
 [private]
 default:

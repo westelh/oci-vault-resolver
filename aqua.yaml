@@ -1,5 +1,4 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/aquaproj/aqua/main/json-schema/aqua-yaml.json
-# 開発と CI で使うツールの版をここで固定する。`aqua i` で入れる。
 # 取得したファイルは aqua-checksums.json の checksum と照合する。版を上げたら `aqua upc -prune` で更新する。
 checksum:
   enabled: true
