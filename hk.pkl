@@ -22,6 +22,16 @@ local test = new Config.Step {
   check = "just test"
 }
 
+local actionlint = new Config.Step {
+  glob = ".github/workflows/**"
+  check = "just actionlint"
+}
+
+local zizmor = new Config.Step {
+  glob = List(".github/workflows/**", ".github/dependabot.yml")
+  check = "just zizmor"
+}
+
 hooks {
   ["pre-commit"] {
     stash = "git"
@@ -29,6 +39,8 @@ hooks {
       ["fmt-check"] = fmtCheck
       ["vet"] = vet
       ["lint"] = lint
+      ["actionlint"] = actionlint
+      ["zizmor"] = zizmor
     }
   }
   ["check"] {
@@ -36,6 +48,8 @@ hooks {
       ["fmt-check"] = fmtCheck
       ["vet"] = vet
       ["lint"] = lint
+      ["actionlint"] = actionlint
+      ["zizmor"] = zizmor
       ["test"] = test
     }
   }
