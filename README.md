@@ -26,6 +26,6 @@ The resolver needs these permissions:
 
 ## Development
 
-Local checks need Go and [aqua](https://aquaproj.github.io/). Run `aqua i` to install [just](https://github.com/casey/just), [hk](https://github.com/jdx/hk) and [golangci-lint](https://golangci-lint.run/), then `hk install` once in each clone to enable the Git hooks. Run the checks with `hk check --all`. After changing a version in `aqua.yaml`, run `aqua upc -prune` to update `aqua-checksums.json`.
+Local checks need Go and [aqua](https://aquaproj.github.io/). Run `aqua i` to install the tools listed in `aqua.yaml`, then `hk install` once in each clone to enable the Git hooks. Run the checks with `hk check --all`. After changing a version in `aqua.yaml`, run `aqua upc -prune` to update `aqua-checksums.json`.
 
 Resolver image builds and publishes run only in the GitHub Actions workflow. Pull requests build and start both Linux architectures from one OCI archive, and pushing a `vX.Y.Z` tag publishes that same archive to `ghcr.io/westelh/oci-vault-resolver`. Published tags are not recreated.
