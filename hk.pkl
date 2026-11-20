@@ -1,6 +1,5 @@
 amends "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Config.pkl"
 
-// recipe はファイルを受け取らずリポジトリ全体を検査するので、glob は実行するかどうかの判定にだけ使う。
 local goFiles = List("**/*.go", "go.mod", "go.sum")
 
 local fmtCheck = new Config.Step {

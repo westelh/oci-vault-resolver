@@ -30,7 +30,6 @@ env:
   PLATFORMS: amd64 arm64
   # タグの push ではタグ名をバイナリの version に埋め込む。それ以外は dev。
   RESOLVER_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'dev' }}
-  # aqua 自身と aqua.yaml の版は Dependabot では上がらないので、手で上げる。
   AQUA_VERSION: v2.66.1
 
 # Actions はタグの差し替えの影響を受けないようコミット SHA で固定し、Dependabot で更新する。
@@ -57,7 +56,6 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      # aqua-registry の hk には署名の検証がないので、aqua-checksums.json の checksum が attestation 付きの asset のものかを確かめる。
       - name: Verify the hk checksum pinned for aqua
         env:
           GH_TOKEN: ${{ github.token }}
