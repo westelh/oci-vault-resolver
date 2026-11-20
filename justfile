@@ -27,7 +27,6 @@ vet:
 test:
     go test ./...
 
-# .github/workflows/resolver.yml の verify-image ジョブもこの recipe でバイナリをビルドする。
 [doc('RESOLVER_PLATFORMS 向けに静的バイナリをビルドする')]
 [script]
 build:
