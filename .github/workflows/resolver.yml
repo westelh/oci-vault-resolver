@@ -12,6 +12,9 @@ on:
       - aqua.yaml
       - aqua-checksums.json
       - .golangci.yml
+      - _typos.toml
+      - .editorconfig
+      - "**.md"
       - .github/**
   push:
     tags:
@@ -62,7 +65,7 @@ jobs:
       - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
         with:
           aqua_version: ${{ env.AQUA_VERSION }}
-          packages: hk just golangci-lint actionlint zizmor shellcheck
+          packages: hk just golangci-lint actionlint zizmor shellcheck typos
       # zizmor は GH_TOKEN があるとオンラインの監査（impostor-commit など）も行う。
       - name: hk check
         env:

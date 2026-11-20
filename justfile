@@ -50,6 +50,10 @@ actionlint:
 zizmor:
     zizmor .github
 
+[doc('コード・コメント・ドキュメントのスペルミスを typos で検査する')]
+typos:
+    typos
+
 # -race は cgo が要るので CGO_ENABLED=1 を明示する。
 # -shuffle=on は失敗したパッケージの出力に -test.shuffle <seed> を出すので、-shuffle=<seed> で順序を再現できる。
 [doc('Go テストを -race と -shuffle=on で実行する')]
