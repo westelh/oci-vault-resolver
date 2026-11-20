@@ -166,7 +166,7 @@ func TestWriteRejectsUnmanagedSecretWithoutWrite(t *testing.T) {
 func TestWriteFailsWithoutRetryOnCreateRace(t *testing.T) {
 	client := fake.NewClientset()
 	creates := 0
-	client.PrependReactor("create", "secrets", func(a clienttesting.Action) (bool, runtime.Object, error) {
+	client.PrependReactor("create", "secrets", func(_ clienttesting.Action) (bool, runtime.Object, error) {
 		creates++
 		return true, nil, apierrors.NewAlreadyExists(secretsResource, testSecretName)
 	})
@@ -193,7 +193,7 @@ func TestWriteDistinguishesUpdateErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			client := fake.NewClientset(managedSecret())
 			updates := 0
-			client.PrependReactor("update", "secrets", func(a clienttesting.Action) (bool, runtime.Object, error) {
+			client.PrependReactor("update", "secrets", func(_ clienttesting.Action) (bool, runtime.Object, error) {
 				updates++
 				return true, nil, tc.err
 			})
@@ -213,7 +213,7 @@ func TestWriteDistinguishesUpdateErrors(t *testing.T) {
 
 func TestWriteDistinguishesGetErrors(t *testing.T) {
 	client := fake.NewClientset()
-	client.PrependReactor("get", "secrets", func(a clienttesting.Action) (bool, runtime.Object, error) {
+	client.PrependReactor("get", "secrets", func(_ clienttesting.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewForbidden(secretsResource, testSecretName, errors.New("denied"))
 	})
 	writes := recordWrites(client)
