@@ -12,7 +12,7 @@ on:
       - aqua.yaml
       - aqua-checksums.json
       - .golangci.yml
-      - .github/workflows/resolver.yml
+      - .github/**
   push:
     tags:
       - "v*"
@@ -57,11 +57,16 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
+          # このワークフローは v* タグで公開するので、別の run が書いたキャッシュを読まない。
+          cache: false
       - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
         with:
           aqua_version: ${{ env.AQUA_VERSION }}
-          packages: hk just golangci-lint
+          packages: hk just golangci-lint actionlint zizmor shellcheck
+      # zizmor は GH_TOKEN があるとオンラインの監査（impostor-commit など）も行う。
       - name: hk check
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: hk check --all
 
   verify-image:
@@ -75,6 +80,8 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
+          # このワークフローは v* タグで公開するので、別の run が書いたキャッシュを読まない。
+          cache: false
       - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
         with:
           aqua_version: ${{ env.AQUA_VERSION }}
