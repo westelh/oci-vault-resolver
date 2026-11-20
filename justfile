@@ -20,10 +20,13 @@ fmt-check:
     fi
 
 # go mod verify は go.sum と照らしてモジュールキャッシュの改ざんを見つける。
+# govulncheck 用の tools/go.mod も Dependabot で更新されるので、同じように検査する。
 [doc('go.mod と go.sum のずれを go mod tidy -diff で、モジュールキャッシュの改ざんを go mod verify で検査する')]
 mod-check:
     go mod tidy -diff
     go mod verify
+    cd tools && go mod tidy -diff
+    cd tools && go mod verify
 
 [doc('Go コードを go vet で検査する')]
 vet:
