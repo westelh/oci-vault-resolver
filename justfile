@@ -28,6 +28,16 @@ vet:
 lint:
     golangci-lint run ./...
 
+# run: のシェルは PATH の shellcheck で検査する。
+[doc('GitHub Actions のワークフローを actionlint で検査する')]
+actionlint:
+    actionlint
+
+# GH_TOKEN か GITHUB_TOKEN があるとオンラインの監査（impostor-commit など）も行い、ないときはオフラインで動く。
+[doc('GitHub Actions のワークフローと Dependabot の設定を zizmor で検査する')]
+zizmor:
+    zizmor .github
+
 [doc('Go テストを実行する')]
 test:
     go test ./...
