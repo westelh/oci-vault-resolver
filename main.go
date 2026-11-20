@@ -106,6 +106,7 @@ func atStage(stage string, err error) error {
 	}
 	return stagedError{stage, err}
 }
+
 func failureStage(err error) string {
 	var e stagedError
 	if errors.As(err, &e) {

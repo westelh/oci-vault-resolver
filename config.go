@@ -10,9 +10,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-var ErrInvalidConfig = errors.New("invalid resolver configuration")
-var regionPattern = regexp.MustCompile(`^[a-z0-9-]+$`)
-var namespacePattern = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+var (
+	ErrInvalidConfig = errors.New("invalid resolver configuration")
+	regionPattern    = regexp.MustCompile(`^[a-z0-9-]+$`)
+	namespacePattern = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+)
 
 // A Secret data key that Timoni runtime can read as obj.data.<key> without
 // quotes: a dot makes a nested path, "-" a subtraction, a leading "_" a hidden
