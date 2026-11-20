@@ -8,7 +8,7 @@ local fmtCheck = new Config.Step {
 }
 
 local modCheck = new Config.Step {
-  glob = List("go.mod", "go.sum")
+  glob = List("go.mod", "go.sum", "tools/go.mod", "tools/go.sum")
   check = "just mod-check"
 }
 

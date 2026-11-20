@@ -6,6 +6,8 @@ on:
       - "**.go"
       - go.mod
       - go.sum
+      - tools/go.mod
+      - tools/go.sum
       - Dockerfile
       - justfile
       - hk.pkl
