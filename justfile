@@ -19,6 +19,12 @@ fmt-check:
       exit 1
     fi
 
+# go mod verify は go.sum と照らしてモジュールキャッシュの改ざんを見つける。
+[doc('go.mod と go.sum のずれを go mod tidy -diff で、モジュールキャッシュの改ざんを go mod verify で検査する')]
+mod-check:
+    go mod tidy -diff
+    go mod verify
+
 [doc('Go コードを go vet で検査する')]
 vet:
     go vet ./...
@@ -48,9 +54,11 @@ zizmor:
 typos:
     typos
 
-[doc('Go テストを実行する')]
+# -race は cgo が要るので CGO_ENABLED=1 を明示する。
+# -shuffle=on は失敗したパッケージの出力に -test.shuffle <seed> を出すので、-shuffle=<seed> で順序を再現できる。
+[doc('Go テストを -race と -shuffle=on で実行する')]
 test:
-    go test ./...
+    CGO_ENABLED=1 go test -race -shuffle=on ./...
 
 [doc('RESOLVER_PLATFORMS 向けに静的バイナリをビルドする')]
 [script]
