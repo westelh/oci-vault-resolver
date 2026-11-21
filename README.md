@@ -11,7 +11,7 @@ Configuration comes only from environment variables:
 | `OCI_VAULT_RESOLVER_VAULT_NAME` | Display name of the Vault. |
 | `OCI_VAULT_RESOLVER_SECRET_NAME` | Name of the secret in the Vault. |
 | `OCI_VAULT_RESOLVER_SECRET_KEY` | Key in the Kubernetes Secret's `data`. Starts with a letter and has only letters, digits and `_` (at most 253 characters), so Timoni runtime reads it as `obj.data.<key>` without quotes. |
-| `OCI_VAULT_RESOLVER_MANAGED_BY` | Value of the managed-by annotation. Defaults to `oci-vault-resolver`. Give each resolver in a cluster its own value. |
+| `OCI_VAULT_RESOLVER_MANAGED_BY` | Value of the managed-by annotation. Defaults to `oci-vault-resolver`. It guards against two resolvers configured with the same Kubernetes Secret name in the same namespace by mistake: a resolver whose value differs from the annotation on the existing Secret fails instead of overwriting it. Give each resolver its own value so that this mistake is caught. |
 | `OCI_VAULT_RESOLVER_KUBERNETES_SECRET_NAME` | Name of the Kubernetes Secret to write. Must be a valid Secret name (a DNS subdomain: lowercase letters, digits, `-` and `.`, starting and ending with a letter or digit, at most 253 characters). Defaults to `oci-vault-resolver`. Give each resolver in a namespace its own name. |
 | `POD_NAMESPACE` | Namespace of the Kubernetes Secret, from the downward API. Defaults to `default`. |
 
